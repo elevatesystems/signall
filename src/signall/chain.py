@@ -45,9 +45,9 @@ def validation_context(*, fetch: bool, require_revocation: bool, extra_roots=(),
         CertRevTrustPolicy, RevocationCheckingPolicy, RevocationCheckingRule,
     )
 
-    from signall.verify import system_trust_roots
+    from signall.verify import trust_certificates
 
-    roots, intermediates = split_trust_store(system_trust_roots() + list(extra_roots))
+    roots, intermediates = split_trust_store(trust_certificates(extra_roots))
     backend = None
     if fetch:
         from pyhanko_certvalidator.fetchers.requests_fetchers import RequestsFetcherBackend

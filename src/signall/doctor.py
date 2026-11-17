@@ -190,26 +190,23 @@ def url_reachable(url: str, timeout: float = NETWORK_TIMEOUT_SECONDS) -> bool:
 # --- checks ---------------------------------------------------------------------------------
 
 def _trust_check(cert, env: Environment) -> Check:
-    from pyhanko_certvalidator import CertificateValidator, ValidationContext
+    from pyhanko_certvalidator import CertificateValidator
     from pyhanko_certvalidator.errors import PathBuildingError, PathValidationError
 
-    from signall.verify import system_trust_roots
+    from signall.chain import validation_context
 
     issuer = cert.issuer.native.get("common_name", "its issuer")
-    roots = system_trust_roots()
-    moment = env.now or datetime.datetime.now(datetime.timezone.utc)
-    context = ValidationContext(trust_roots=roots, allow_fetching=False, revocation_mode="soft-fail", moment=moment)
+    context = validation_context(fetch=False, require_revocation=False, moment=env.now)
     validator = CertificateValidator(cert, validation_context=context)
-    install = ("Install the DoD PKI certificates into the system trust store: download the PKI CA certificate "
-               "bundle (PKCS#7) from https://public.cyber.mil/pki-pke/, convert it to PEM with "
-               "`openssl pkcs7 -print_certs`, copy it to /etc/pki/ca-trust/source/anchors/, then run "
-               "`sudo update-ca-trust`.")
+    install = ("Signall bundles the DoD root and intermediate CAs; for other certificates, add the root CA to "
+               "the system trust store (copy it to /etc/pki/ca-trust/source/anchors/, then run "
+               "`sudo update-ca-trust`). For DoD CAs newer than Signall's bundle, update Signall.")
     try:
         path = asyncio.run(validator.async_validate_usage(set()))
     except PathBuildingError:
         return Check("Trust", Status.WARN,
                      f"no chain from {issuer} to a trusted root; `signall verify` will call your signatures "
-                     "untrusted (Acrobat uses its own trust list)", install)
+                     "untrusted, and no revocation data can be embedded", install)
     except PathValidationError as exc:
         return Check("Trust", Status.WARN, f"the chain to a trusted root is not valid: {exc}", install)
     anchor = path.trust_anchor.authority.name.native.get("common_name", "a trusted root")

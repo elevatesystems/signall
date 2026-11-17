@@ -140,7 +140,7 @@ def test_doctor_with_token(softhsm, pki, env, monkeypatch, capsys):
         assert checks[name].status is Status.OK, checks[name]
     assert "SIGNALL TEST EMAIL CA-1" in checks["Signing certificate"].detail
     assert "non_repudiation" in checks["Signing certificate"].detail
-    assert checks["Trust"].detail == "chains to SIGNALL TEST EMAIL CA-1"
+    assert checks["Trust"].detail == "chains to Signall Test Root CA"  # roots anchor, not intermediates
 
     monkeypatch.setattr(verify, "system_trust_roots", lambda: [pki.root.asn1])
     checks = {c.name: c for c in run_checks(softhsm, online=False, env=env)}

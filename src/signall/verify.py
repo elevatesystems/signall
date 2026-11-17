@@ -55,6 +55,18 @@ def system_trust_roots() -> list[x509.Certificate]:
     return roots
 
 
+def trust_certificates(extra: list[x509.Certificate] = ()) -> list[x509.Certificate]:
+    """The system trust store, Signall's bundled DoD certificates, and ``extra``, without duplicates."""
+    from signall.trust import dod_intermediates, dod_roots
+
+    out, seen = [], set()
+    for cert in [*system_trust_roots(), *dod_roots(), *dod_intermediates(), *extra]:
+        if cert.sha256 not in seen:
+            seen.add(cert.sha256)
+            out.append(cert)
+    return out
+
+
 _CHANGES = {"NONE": "none", "LTA_UPDATES": "none", "FORM_FILLING": "form filling",
             "ANNOTATIONS": "annotations", "OTHER": "other"}
 
@@ -91,7 +103,7 @@ def verify(data: bytes, extra_roots: list[x509.Certificate] = (), online: bool =
     from signall.chain import split_trust_store
 
     reader = open_reader(data)
-    roots, intermediates = split_trust_store(system_trust_roots() + list(extra_roots))
+    roots, intermediates = split_trust_store(trust_certificates(extra_roots))
     context = ValidationContext(trust_roots=roots, other_certs=intermediates, allow_fetching=online)
     reports = []
     logging.getLogger("pyhanko").setLevel(logging.CRITICAL)
