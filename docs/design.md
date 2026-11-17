@@ -59,9 +59,19 @@ GTK4 + libadwaita shell (Python, PyGObject)
 - **Why pdf.js:** it is the only free renderer that handles dynamic XFA. Using one renderer for every document type keeps a single code path.
 - **The PIN goes only into Signall's own native dialog.** Signall never logs it or stores it.
 
+## Status
+
+Done (Phase 0 core): `signall inspect | sign | verify | tokens` for all three document types; the dynamic XFA signing approach above, with layouts rendered by pdf.js in WebKitGTK; signature-field positions read from the live layout; the Acrobat-style appearance; field locks taken from the form's XFA manifests; the per-signature PIN for the 9C key; usage-rights signatures kept intact in encrypted forms. Tests run in a Fedora 40 container (`dev/run-tests.sh`) against a SoftHSM2 token set up like a CAC.
+
+Known gaps:
+- **Revocation data:** Acrobat embeds OCSP/CRL responses in its signatures; Signall does not yet. This needs the DoD chain and network access, so it is part of Phase 2.
+- **Change analysis for XFA countersignatures:** a later signer re-renders the pages. Acrobat accepts this, but pyHanko's generic change analysis (used by `signall verify`) reports it as "other" changes. An XFA-aware policy has to distinguish an honest re-render from tampering with what non-Adobe viewers display.
+- **XFA `form` packet checksum** (see above).
+- **AcroForm text fields** cannot be filled yet; `--set` fills XFA data only.
+
 ## Roadmap
 
-1. **Core CLI:** `signall inspect | sign | verify` for all three document types. Includes the Acrobat-style appearance, the pre-render pipeline, and a SoftHSM2 test token configured to behave like a CAC.
-2. **Real hardware:** `signall doctor`, signing with a real CAC, and validating the results in Acrobat.
+1. ~~**Core CLI**~~ (done, see Status).
+2. **Real hardware:** `signall doctor`, signing with a real CAC, embedding revocation data, and validating the results in Acrobat.
 3. **GTK app:** open, fill, click a signature field or draw a box, enter the PIN, save. A sidebar shows signature status.
 4. **Ship:** a validation panel, card hot-plug support, a Nautilus "Sign" action, and an RPM via COPR. Flatpak comes later.

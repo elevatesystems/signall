@@ -8,3 +8,9 @@ __pycache__/
 
 # Node (bundled pdf.js build inputs)
 node_modules/
+
+# Fetched by scripts/fetch-pdfjs.py
+src/signall/render/pdfjs/
+
+# Test output
+.pytest_cache/

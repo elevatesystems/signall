@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "signall"
+version = "0.1.0.dev0"
+description = "Sign PDFs, including dynamic XFA forms, with a US DoD CAC on Linux"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyHanko[pkcs11]>=0.29",
+    "pyhanko-certvalidator>=0.27",
+    "lxml>=5.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pymupdf>=1.24"]
+
+[project.scripts]
+signall = "signall.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/signall"]
+artifacts = ["src/signall/render/pdfjs/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "render: needs WebKitGTK and a display (run under Xvfb)",
+]
