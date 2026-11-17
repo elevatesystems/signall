@@ -22,7 +22,6 @@ TIMEOUT_SECONDS = 60
 
 # Documents being rendered, keyed by a per-render token that prefixes every URL.
 _jobs: dict[str, dict[str, bytes]] = {}
-_scheme_registered = False
 
 
 class RenderError(RuntimeError):
@@ -59,10 +58,15 @@ def _asset_root() -> Path:
     return root
 
 
-def _register_scheme(WebKit, Gio, GLib) -> None:
-    global _scheme_registered
-    if _scheme_registered:
-        return
+def _new_context(WebKit, Gio, GLib):
+    """Create a private web context that serves the render assets.
+
+    Do not use WebContext.get_default(): WebKit destroys the default context in
+    a C exit handler, after the Python interpreter has shut down. Freeing the
+    Python scheme handler at that point crashes the process (SIGSEGV on exit).
+    A private context is released when the render finishes, while Python is
+    still running.
+    """
     root = _asset_root().resolve()
 
     def serve(request) -> None:
@@ -82,12 +86,12 @@ def _register_scheme(WebKit, Gio, GLib) -> None:
             mimetypes.guess_type(name)[0] or "application/octet-stream")
         request.finish(Gio.MemoryInputStream.new_from_bytes(GLib.Bytes.new(data)), len(data), mime)
 
-    context = WebKit.WebContext.get_default()
+    context = WebKit.WebContext()
     context.register_uri_scheme(SCHEME, serve)
     security = context.get_security_manager()
     security.register_uri_scheme_as_secure(SCHEME)
     security.register_uri_scheme_as_cors_enabled(SCHEME)
-    _scheme_registered = True
+    return context
 
 
 def _run(loop, GLib, what: str, state: dict) -> None:
@@ -116,7 +120,7 @@ def render_xfa(pdf: bytes, fields: list[SignatureFieldSpec]) -> RenderResult:
 
     if not Gtk.init_check():
         raise RenderError("no display available for rendering (need Wayland or X11)")
-    _register_scheme(WebKit, Gio, GLib)
+    context = _new_context(WebKit, Gio, GLib)
 
     token = secrets.token_hex(8)
     _jobs[token] = {
@@ -126,7 +130,7 @@ def render_xfa(pdf: bytes, fields: list[SignatureFieldSpec]) -> RenderResult:
     }
     loop = GLib.MainLoop()
     state: dict = {}
-    view = WebKit.WebView()
+    view = WebKit.WebView(web_context=context)
     view.get_settings().set_print_backgrounds(True)
     ucm = view.get_user_content_manager()
     ucm.register_script_message_handler("signall", None)
