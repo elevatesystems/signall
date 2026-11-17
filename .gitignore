@@ -1,0 +1,10 @@
+# Local-only experiments and scratch files
+experiments/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+
+# Node (bundled pdf.js build inputs)
+node_modules/
