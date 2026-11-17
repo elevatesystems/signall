@@ -8,6 +8,8 @@ version = "0.1.0.dev0"
 description = "Sign PDFs, including dynamic XFA forms, with a US DoD CAC on Linux"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "pyHanko[pkcs11]>=0.29",
     "pyhanko-certvalidator>=0.27",

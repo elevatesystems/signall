@@ -25,3 +25,7 @@ signall verify "form - signed.pdf"
 ## Tests
 
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command).
+
+## License
+
+MIT; see [LICENSE](LICENSE). pdf.js (downloaded at build time) is Apache-2.0.
