@@ -1,4 +1,4 @@
-"""Command-line interface: ``signall inspect | sign | verify | tokens``."""
+"""Command-line interface: ``signall inspect | sign | verify | tokens | doctor``."""
 from __future__ import annotations
 
 import argparse
@@ -149,6 +149,20 @@ def cmd_tokens(args) -> int:
     return 0
 
 
+def cmd_doctor(args) -> int:
+    from signall.doctor import Status, run_checks
+
+    checks = run_checks(args.module, online=not args.offline)
+    width = max(len(c.name) for c in checks)
+    for c in checks:
+        print(f"{c.status.value:<5} {c.name:<{width}}  {c.detail}")
+        if c.fix and c.status in (Status.FAIL, Status.WARN):
+            print(f"{'':<5} {'':<{width}}  fix: {c.fix}")
+    failed = any(c.status is Status.FAIL for c in checks)
+    print("\nProblems found; fix the FAIL lines first." if failed else "\nReady to sign.")
+    return 1 if failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="signall", description="Sign PDFs with a smart card (CAC/PIV).")
     parser.add_argument("--version", action="version", version=f"signall {__version__}")
@@ -182,6 +196,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("tokens", help="list smart cards and their certificates")
     p.add_argument("--module", help="PKCS#11 module (default: p11-kit proxy or OpenSC)")
     p.set_defaults(func=cmd_tokens)
+
+    p = sub.add_parser("doctor", help="check the card reader, card, certificates, and network")
+    p.add_argument("--module", help="PKCS#11 module (default: p11-kit proxy or OpenSC)")
+    p.add_argument("--offline", action="store_true", help="skip the revocation server check")
+    p.set_defaults(func=cmd_doctor)
     return parser
 
 

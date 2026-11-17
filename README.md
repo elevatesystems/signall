@@ -17,6 +17,7 @@ python3 scripts/fetch-pdfjs.py          # downloads the pinned pdf.js release
 /usr/bin/python3 -m venv --system-site-packages .venv && . .venv/bin/activate
 pip install -e .
 
+signall doctor                          # check the reader, card, certificates, and network
 signall tokens                          # find the card and its signing certificate
 signall inspect form.pdf                # list signature fields
 signall sign form.pdf                   # sign the first empty field (asks for the PIN)

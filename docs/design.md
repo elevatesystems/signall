@@ -52,7 +52,7 @@ GTK4 + libadwaita shell (Python, PyGObject)
      ├─ token:   PKCS#11 via p11-kit/OpenSC, 9C auto-selection, context login,
      │           card insert/remove detection
      ├─ trust:   bundled DoD roots and intermediates
-     └─ doctor:  checks pcscd, reader, driver, certificates, scdaemon, OCSP reachability
+     └─ doctor:  checks pcscd, reader, card, certificates, trust, scdaemon, OCSP/CRL reachability
 ```
 
 - **Why Python:** pyHanko is the only mature open-source engine that covers incremental multi-party signing, encrypted documents, field creation, PAdES, and LTV. Rust would mean writing that stack from scratch. PyGObject with libadwaita still gives a fully native GNOME UI.
@@ -63,7 +63,10 @@ GTK4 + libadwaita shell (Python, PyGObject)
 
 Done (Phase 0 core): `signall inspect | sign | verify | tokens` for all three document types; the dynamic XFA signing approach above, with layouts rendered by pdf.js in WebKitGTK; signature-field positions read from the live layout; the Acrobat-style appearance; field locks taken from the form's XFA manifests; the per-signature PIN for the 9C key; usage-rights signatures kept intact in encrypted forms. Tests run in a Fedora 40 container (`dev/run-tests.sh`) against a SoftHSM2 token set up like a CAC.
 
-Known gaps:
+Phase 2 so far:
+- **Real hardware:** tested on Fedora 40 with an Identiv SCR3500 A reader, a PIV CAC (OpenSC `piv_II` driver), and OpenSC 0.25.0, through both p11-kit-proxy and `opensc-pkcs11.so`. Signall picks the 9C certificate (DOD EMAIL CA, digitalSignature + nonRepudiation) and asks for the PIN exactly once per signature. A DD 2875 and a plain PDF with a drawn box both verify as valid.
+- **`signall doctor`** checks the PKCS#11 module, pcscd, the reader, the card, the signing certificate and its expiry, the chain to a trusted root, GnuPG's scdaemon, and whether the OCSP and CRL servers are reachable. It detects a reader that is passed through to a virtual machine (virt-manager, GNOME Boxes, QEMU, VirtualBox, VMware) and says how to get it back. Its output never includes the cardholder's name or EDIPI.
+
 - **Revocation data:** Acrobat embeds OCSP/CRL responses in its signatures; Signall does not yet. This needs the DoD chain and network access, so it is part of Phase 2.
 - **Change analysis for XFA countersignatures:** a later signer re-renders the pages. Acrobat accepts this, but pyHanko's generic change analysis (used by `signall verify`) reports it as "other" changes. An XFA-aware policy has to distinguish an honest re-render from tampering with what non-Adobe viewers display.
 - **XFA `form` packet checksum** (see above).
