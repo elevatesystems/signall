@@ -177,6 +177,15 @@ class CardSigner(PKCS11Signer):
         super().__init__(*args, **kwargs)
         self._context_pin = context_pin
 
+    @property
+    def cert_registry(self):
+        # PKCS11Signer registers the signing certificate in its own registry, and pyHanko adds it to
+        # the signature again; leave it out here so that it is embedded once.
+        from pyhanko_certvalidator.registry import SimpleCertificateStore
+
+        mine = self.signing_cert.sha256
+        return SimpleCertificateStore.from_certs([c for c in super().cert_registry if c.sha256 != mine])
+
     def sign_kwargs(self, data_to_sign: bytes):
         kwargs = dict(super().sign_kwargs(data_to_sign))
         if self._context_pin is not None:
@@ -198,8 +207,14 @@ def _explain(exc: Exception) -> SignallError:
 
 @contextlib.contextmanager
 def open_signer(module: str, pin_provider: PinProvider, token: TokenInfo | None = None,
-                cert_id: bytes | None = None, ca_chain=()) -> Iterator[CardSigner]:
-    """Open the card and yield a signer for its document-signing certificate."""
+                cert_id: bytes | None = None, ca_chain=(),
+                chain_for: Callable[[x509.Certificate], list[x509.Certificate]] | None = None,
+                ) -> Iterator[CardSigner]:
+    """Open the card and yield a signer for its document-signing certificate.
+
+    ``chain_for`` is called with the chosen certificate before the PIN is asked for, and returns the
+    CA certificates to embed (it may go to the network); otherwise ``ca_chain`` is embedded.
+    """
     import pkcs11
     from pkcs11 import Attribute, ObjectClass
 
@@ -214,6 +229,8 @@ def open_signer(module: str, pin_provider: PinProvider, token: TokenInfo | None 
     if chosen is None:
         raise SignallError("the requested certificate is not on the card")
 
+    if chain_for is not None:
+        ca_chain = chain_for(chosen.certificate)
     pin = pin_provider(token_info, chosen)
     try:
         session = tok.open(user_pin=pin)

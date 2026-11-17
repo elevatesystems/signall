@@ -1,7 +1,7 @@
 """PKCS#11 tests against a SoftHSM token shaped like a CAC."""
 import pytest
 
-from signall.pdf import SignallError
+from signall.pdf import SignallError, open_reader
 from signall.signing import SignRequest, sign
 from signall.token import choose_signing_certificate, list_certificates, list_tokens, open_signer
 from signall.verify import load_certificates, verify
@@ -33,6 +33,9 @@ def test_signs_with_card(softhsm, plain_pdf, root_pem, pki):
         assert signer._context_pin == TOKEN_PIN  # the key wants the PIN again at signing time
         signed = sign(plain_pdf, signer, SignRequest(box=(0, (72, 72, 288, 108))))
     assert asked == ["DOE.JANE.Q.0000000001"]  # one prompt per signature
+    (emb,) = open_reader(signed).embedded_signatures
+    certs = [c.chosen.sha256 for c in emb.signed_data["certificates"]]
+    assert len(certs) == len(set(certs)) == 2  # the signer once, plus its CA
     (report,) = verify(signed, load_certificates(root_pem))
     assert report.intact and report.trusted
 

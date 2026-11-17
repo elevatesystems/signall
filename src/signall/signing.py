@@ -55,8 +55,13 @@ def _apply_values_static(writer, values: dict[str, str]) -> None:
 
 
 def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None, *,
-         renderer: xfa_sign.Renderer | None = None, now: datetime.datetime | None = None) -> bytes:
-    """Sign ``data`` and return the signed PDF bytes (the original plus one incremental update)."""
+         renderer: xfa_sign.Renderer | None = None, now: datetime.datetime | None = None,
+         validation_context=None) -> bytes:
+    """Sign ``data`` and return the signed PDF bytes (the original plus one incremental update).
+
+    With a ``validation_context`` (see :func:`signall.chain.prepare_embedding`), the OCSP and CRL
+    responses it holds are embedded Acrobat-style, in the adbe-revocationInfoArchival attribute.
+    """
     request = request or SignRequest()
     now = now or datetime.datetime.now().astimezone()
     info = inspect(data)
@@ -104,6 +109,7 @@ def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None
     meta = signers.PdfSignatureMetadata(
         field_name=field_name, name=name, reason=request.reason, location=request.location,
         subfilter=sig_fields.SigSeedSubFilter.ADOBE_PKCS7_DETACHED,
+        embed_validation_info=validation_context is not None, validation_context=validation_context,
     )
     pdf_signer = signers.PdfSigner(meta, signer, stamp_style=AcrobatStampStyle(), new_field_spec=new_field)
     out = io.BytesIO()

@@ -28,6 +28,8 @@ class SignatureReport:
     trusted: bool         # the certificate chains to a trusted root
     covers_whole_file: bool
     changes_after: str    # "none", "form filling", "annotations", "other"
+    revocation: str = "not embedded"
+    """Embedded (Acrobat-style) revocation data: "not embedded", "good at signing time", or "not usable"."""
 
     @property
     def ok(self) -> bool:
@@ -57,11 +59,40 @@ _CHANGES = {"NONE": "none", "LTA_UPDATES": "none", "FORM_FILLING": "form filling
             "ANNOTATIONS": "annotations", "OTHER": "other"}
 
 
+def embedded_revocation_info(emb) -> tuple[list, list] | None:
+    """(OCSP responses, CRLs) from the adbe-revocationInfoArchival attribute, or None."""
+    from pyhanko.sign.general import MultivaluedAttributeError, NonexistentAttributeError, find_unique_cms_attribute
+
+    try:
+        archival = find_unique_cms_attribute(emb.signer_info["signed_attrs"], "adobe_revocation_info_archival")
+    except (NonexistentAttributeError, MultivaluedAttributeError):
+        return None
+    ocsps = list(archival["ocsp"]) if archival["ocsp"].native is not None else []
+    crls = list(archival["crl"]) if archival["crl"].native is not None else []
+    return ocsps, crls
+
+
+def _revocation_state(emb, extra_roots) -> str:
+    """Check the embedded revocation data offline, as of the signing time."""
+    from signall.chain import validation_context
+
+    found = embedded_revocation_info(emb)
+    if found is None:
+        return "not embedded"
+    ocsps, crls = found
+    when = emb.self_reported_timestamp
+    context = validation_context(fetch=False, require_revocation=True, extra_roots=extra_roots,
+                                 ocsps=ocsps, crls=crls, moment=when)
+    status = validate_pdf_signature(emb, signer_validation_context=context)
+    return "good at signing time" if status.trusted and status.revocation_details is None else "not usable"
+
+
 def verify(data: bytes, extra_roots: list[x509.Certificate] = (), online: bool = False) -> list[SignatureReport]:
+    from signall.chain import split_trust_store
+
     reader = open_reader(data)
-    context = ValidationContext(
-        trust_roots=system_trust_roots() + list(extra_roots), allow_fetching=online,
-    )
+    roots, intermediates = split_trust_store(system_trust_roots() + list(extra_roots))
+    context = ValidationContext(trust_roots=roots, other_certs=intermediates, allow_fetching=online)
     reports = []
     logging.getLogger("pyhanko").setLevel(logging.CRITICAL)
     for emb in reader.embedded_signatures:
@@ -75,5 +106,6 @@ def verify(data: bytes, extra_roots: list[x509.Certificate] = (), online: bool =
             trusted=bool(status.trusted),
             covers_whole_file=status.coverage.name == "ENTIRE_FILE",
             changes_after=_CHANGES.get(status.modification_level.name, "other") if status.modification_level else "none",
+            revocation=_revocation_state(emb, extra_roots),
         ))
     return reports

@@ -13,16 +13,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from asn1crypto import ocsp as asn1_ocsp
 from asn1crypto import x509 as asn1_x509
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from cryptography.x509 import ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID, NameOID
 from pyhanko.sign import signers
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SOFTHSM_MODULE = "/usr/lib64/pkcs11/libsofthsm2.so"
 TOKEN_PIN = "123456"
+OCSP_URL = "http://ocsp.signall.test"  # .test never resolves; tests supply OCSP responses directly
 DOCUMENT_SIGNING = x509.ObjectIdentifier("1.3.6.1.4.1.311.10.3.12")
 
 
@@ -90,10 +93,24 @@ def _issue(subject: x509.Name, issuer: Identity | None, *, ca: bool, key_usage: 
     if issuer:
         builder = builder.add_extension(
             x509.AuthorityKeyIdentifier.from_issuer_public_key(issuer.key.public_key()), critical=False)
+        builder = builder.add_extension(x509.AuthorityInformationAccess([x509.AccessDescription(
+            AuthorityInformationAccessOID.OCSP, x509.UniformResourceIdentifier(OCSP_URL))]), critical=False)
     if eku:
         builder = builder.add_extension(x509.ExtendedKeyUsage(eku), critical=False)
     cert = builder.sign(issuer.key if issuer else key, hashes.SHA256())
     return Identity(key=key, cert=cert)
+
+
+def ocsp_response(cert: Identity, issuer: Identity, *, revoked: bool = False) -> asn1_ocsp.OCSPResponse:
+    """An OCSP response for ``cert``, signed by its issuer, like ocsp.disa.mil would give."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    response = ocsp.OCSPResponseBuilder().add_response(
+        cert=cert.cert, issuer=issuer.cert, algorithm=hashes.SHA1(),
+        cert_status=ocsp.OCSPCertStatus.REVOKED if revoked else ocsp.OCSPCertStatus.GOOD,
+        this_update=now - datetime.timedelta(minutes=5), next_update=now + datetime.timedelta(days=1),
+        revocation_time=now - datetime.timedelta(hours=1) if revoked else None, revocation_reason=None,
+    ).responder_id(ocsp.OCSPResponderEncoding.HASH, issuer.cert).sign(issuer.key, hashes.SHA256())
+    return asn1_ocsp.OCSPResponse.load(response.public_bytes(serialization.Encoding.DER))
 
 
 def build_pki() -> TestPki:

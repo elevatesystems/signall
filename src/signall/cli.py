@@ -86,6 +86,19 @@ def cmd_sign(args) -> int:
         reason=args.reason, location=args.location,
     )
 
+    from signall.chain import prepare_embedding
+    from signall.verify import load_certificates
+
+    extra_roots = [c for path in (args.trust or []) for c in load_certificates(path)]
+    embedding = None
+
+    def chain_for(cert):
+        nonlocal embedding
+        embedding = prepare_embedding(cert, online=not args.offline, extra_roots=extra_roots)
+        if embedding.note:
+            print(f"signall: warning: {embedding.note}", file=sys.stderr)
+        return embedding.chain
+
     if args.p12:
         from pyhanko.sign import signers
 
@@ -93,12 +106,14 @@ def cmd_sign(args) -> int:
         signer = signers.SimpleSigner.load_pkcs12(args.p12, passphrase=passphrase)
         if signer is None:
             raise SignallError(f"could not open {args.p12} (wrong passphrase?)")
-        signed = sign(data, signer, request)
+        extra_roots += list(signer.cert_registry)  # the CA certificates that came with the file
+        signer.cert_registry.register_multiple(chain_for(signer.signing_cert))
+        signed = sign(data, signer, request, validation_context=embedding.context)
     else:
         from signall.token import find_module, open_signer
 
-        with open_signer(find_module(args.module), _pin_from(args)) as signer:
-            signed = sign(data, signer, request)
+        with open_signer(find_module(args.module), _pin_from(args), chain_for=chain_for) as signer:
+            signed = sign(data, signer, request, validation_context=embedding.context)
 
     out.write_bytes(signed)
     print(f"Signed: {out}")
@@ -121,6 +136,7 @@ def cmd_verify(args) -> int:
         print(f"  {state}: signed by {r.signer}" + (f" at {r.signing_time}" if r.signing_time else ""))
         print(f"  unchanged since signing: {'yes' if r.intact else 'NO'}; "
               f"certificate trusted: {'yes' if r.trusted else 'no'}; later changes: {r.changes_after}")
+        print(f"  revocation data: {r.revocation}")
     return worst
 
 
@@ -185,6 +201,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--module", help="PKCS#11 module (default: p11-kit proxy or OpenSC)")
     p.add_argument("--p12", help="sign with a PKCS#12 file instead of a card (for testing)")
     p.add_argument("--pin-file", help="read the PIN or passphrase from a file instead of asking")
+    p.add_argument("--offline", action="store_true",
+                   help="don't fetch revocation data (OCSP/CRL) to embed in the signature")
+    p.add_argument("--trust", action="append", metavar="CERT",
+                   help="extra trusted root or CA certificate(s) (PEM or DER)")
     p.set_defaults(func=cmd_sign)
 
     p = sub.add_parser("verify", help="check the signatures in a PDF")

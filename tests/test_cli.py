@@ -23,7 +23,9 @@ def test_sign_and_verify_with_p12(pki, root_pem, plain_pdf, tmp_path, capsys):
     src = tmp_path / "cert.pdf"
     src.write_bytes(plain_pdf)
 
-    assert main(["sign", str(src), "--p12", str(p12), "--pin-file", str(secret), "--box", "1:72,72,288,108"]) == 0
+    assert main(["sign", str(src), "--p12", str(p12), "--pin-file", str(secret), "--box", "1:72,72,288,108",
+                 "--offline", "--trust", str(root_pem)]) == 0
+    assert "no revocation data embedded: offline" in capsys.readouterr().err
     out = tmp_path / "cert - signed.pdf"
     assert out.is_file()
     assert main(["verify", str(out), "--trust", str(root_pem)]) == 0
