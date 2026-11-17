@@ -1,6 +1,9 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
-
-# signall
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/signall-lockup-light.svg">
+    <img src="assets/signall-lockup.svg" height="72" alt="Signall">
+  </picture>
+</h1>
 
 Sign PDFs with a US DoD Common Access Card (CAC) on Linux. Signall is a native GNOME app, and its signatures validate in Adobe Acrobat. It works on plain PDFs, AcroForms, and dynamic XFA forms such as DD Form 2875.
 

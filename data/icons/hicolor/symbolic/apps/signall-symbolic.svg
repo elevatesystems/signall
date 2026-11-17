@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Signall symbolic icon">
+<title>Signall symbolic icon</title>
+<g fill="#2e3436">
+<path transform="translate(9.5 6) rotate(-25)" fill-rule="evenodd" d="M-4.3 -3.6 h8.6 a1.2 1.2 0 0 1 1.2 1.2 v4.8 a1.2 1.2 0 0 1 -1.2 1.2 h-8.6 a1.2 1.2 0 0 1 -1.2 -1.2 v-4.8 a1.2 1.2 0 0 1 1.2 -1.2 z M-4 -1.6 h3 v2.4 h-3 z"/>
+</g>
+<path d="M6 11.6 C4 13.5 6 15 3.5 15 C2.3 15 2 13.8 3 13.8" fill="none" stroke="#2e3436" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
