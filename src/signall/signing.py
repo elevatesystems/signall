@@ -13,8 +13,8 @@ from pyhanko.sign.general import SigningError
 from signall.appearance import AcrobatStampStyle
 from signall.document import Kind, inspect
 from signall.pdf import SignallError, open_writer
-from signall.xfa import Datasets, XfaPackets
-from signall import xfa_sign
+from signall.xfa import Datasets, XfaPackets, printd
+from signall import acroform, xfa_sign
 
 
 @dataclass
@@ -25,6 +25,8 @@ class SignRequest:
     """Create a new field instead: (page index, (x0, y0, x1, y1)) in PDF points."""
     values: dict[str, str] = dataclass_field(default_factory=dict)
     """XFA data values to fill before signing, keyed by data path (form1.page1.Part1.Organization)."""
+    fields: dict[str, object] = dataclass_field(default_factory=dict)
+    """AcroForm values to fill before signing, keyed by field name: text, a radio export value, or a bool."""
     reason: str | None = None
     location: str | None = None
 
@@ -69,6 +71,8 @@ def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None
     new_field = None
 
     if info.kind is Kind.DYNAMIC_XFA:
+        if request.fields:
+            raise SignallError("dynamic XFA forms are filled through their XFA data, not AcroForm fields")
         if request.box is not None:
             raise SignallError("dynamic XFA forms can only be signed in their own signature fields")
         if renderer is None:
@@ -88,6 +92,7 @@ def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None
     else:
         writer = open_writer(data)
         _apply_values_static(writer, request.values)
+        acroform.fill(writer, request.fields)
         if request.box is not None:
             page, box = request.box
             if not 0 <= page < info.page_count:
@@ -106,6 +111,9 @@ def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None
             else:
                 raise SignallError("this PDF has no empty signature field; draw one (--box) to sign it")
 
+    if info.kind is Kind.STATIC_XFA and new_field is None:
+        _stamp_static_date(writer, info, field_name, now, request)
+
     meta = signers.PdfSignatureMetadata(
         field_name=field_name, name=name, reason=request.reason, location=request.location,
         subfilter=sig_fields.SigSeedSubFilter.ADOBE_PKCS7_DETACHED,
@@ -118,6 +126,25 @@ def sign(data: bytes, signer: signers.Signer, request: SignRequest | None = None
     except SigningError as exc:
         raise SignallError(f"signing failed: {exc}") from exc
     return out.getvalue()
+
+
+def _stamp_static_date(writer, info, field_name: str, now: datetime.datetime, request: SignRequest) -> None:
+    """Fill the date that the form's own script sets when this field is signed (if still empty)."""
+    target = next((f for f in info.xfa_signature_fields if f.som == field_name), None)
+    if target is None or not target.date_data_path or not target.date_format:
+        return
+    stamp = printd(target.date_format, now)
+    packets = XfaPackets.from_root(writer.root)
+    datasets = Datasets(packets.get("datasets"))
+    if not (datasets.get(target.date_data_path) or "").strip():
+        datasets.set(target.date_data_path, stamp)
+        xfa_sign._replace_packet(writer, packets, "datasets", datasets.to_bytes())
+    date_field = f"{field_name.rsplit('.', 1)[0]}.{target.date_data_path[-1]}[0]"
+    if date_field not in request.fields and not acroform.value_of(writer, date_field):
+        try:
+            acroform.fill(writer, {date_field: stamp})
+        except SignallError:
+            pass  # no such AcroForm field, or it is read-only: the XFA data still has the date
 
 
 def parse_box(spec: str) -> tuple[int, tuple[float, float, float, float]]:

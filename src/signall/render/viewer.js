@@ -3,12 +3,13 @@
 //
 // Host contract:
 //   GET  doc.pdf        the document to show
-//   GET  config.json    {xfa, fields: [{name, path, signed, signer, date, page, rect}]}
+//   GET  config.json    {xfa, forms, xfaData, dark, fields: [{name, path, signed, signer, date, page, rect}]}
 //                       xfa fields carry `path` (template names); others carry `page` and `rect` (PDF points)
 //   message "signall"   {type: "ready", pages} | {type: "error", error}
 //                       {type: "field", name}             a signature field was clicked
 //                       {type: "box", page, rect}         a new box was drawn (page index, PDF points)
-//                       {type: "collected", id, data}     reply to collect(): base64 PDF with form data, or null
+//                       {type: "collected", id, data, fields}  reply to collect(): AcroForm changes, and for
+//                                                         XFA forms a base64 copy holding the typed XFA data
 //                       {type: "scale", value}            the zoom level changed
 //   window.signall      setDrawMode(on), clearDraft(), collect(id), zoom(how), setDark(on)
 
@@ -176,6 +177,29 @@ function toBase64(bytes) {
   return btoa(s);
 }
 
+// AcroForm values the user changed: {name: text | export value | bool}.
+async function fieldChanges() {
+  const all = await doc.getFieldObjects();
+  const out = {};
+  for (const [name, widgets] of Object.entries(all || {})) {
+    for (const w of widgets) {
+      const stored = doc.annotationStorage.getRawValue(w.id);
+      if (!stored || !("value" in stored)) continue;
+      const value = stored.value;
+      if (w.type === "checkbox") {
+        const was = !!w.value && w.value !== "Off";
+        if (!!value !== was) out[name] = !!value;
+      } else if (w.type === "radiobutton") {
+        if (value === true && w.value !== w.exportValues) out[name] = w.exportValues;
+      } else if (w.type === "text" || w.type === "combobox" || w.type === "listbox") {
+        const text = Array.isArray(value) ? (value[0] ?? "") : String(value ?? "");
+        if (text !== String(w.value ?? "")) out[name] = text;
+      }
+    }
+  }
+  return out;
+}
+
 window.signall = {
   setDrawMode(on) {
     drawMode = !!on;
@@ -185,10 +209,12 @@ window.signall = {
   clearDraft,
   async collect(id) {
     try {
-      const data = doc.annotationStorage.size > 0 ? toBase64(await doc.saveDocument()) : null;
-      post({ type: "collected", id, data });
+      const fields = await fieldChanges();
+      // Dynamic XFA forms: pdf.js's saved copy carries the typed values in its datasets packet.
+      const data = config.xfaData && doc.annotationStorage.size > 0 ? toBase64(await doc.saveDocument()) : null;
+      post({ type: "collected", id, data, fields });
     } catch (e) {
-      post({ type: "collected", id, data: null, error: String(e) });
+      post({ type: "collected", id, data: null, fields: {}, error: String(e) });
     }
   },
   zoom(how) {

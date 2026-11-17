@@ -73,8 +73,8 @@ class DocumentView(Adw.Bin):
     def set_dark(self, on: bool) -> None:
         self._call(f"signall.setDark({json.dumps(on)})")
 
-    def collect(self, callback: Callable[[str | None, str | None], None]) -> None:
-        """Ask for a copy of the document with the user's form input; ``callback(base64, error)``."""
+    def collect(self, callback: Callable[[str | None, dict, str | None], None]) -> None:
+        """Ask for the user's form input; ``callback(xfa_copy_base64, acroform_changes, error)``."""
         request = next(self._requests)
         self._pending[request] = callback
         self._call(f"signall.collect({request})")
@@ -98,7 +98,7 @@ class DocumentView(Adw.Bin):
         elif kind == "collected":
             callback = self._pending.pop(msg.get("id"), None)
             if callback:
-                callback(msg.get("data"), msg.get("error"))
+                callback(msg.get("data"), msg.get("fields") or {}, msg.get("error"))
 
     def _on_policy(self, _web, decision, decision_type) -> bool:
         if decision_type == WebKit.PolicyDecisionType.RESPONSE:

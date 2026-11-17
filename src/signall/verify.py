@@ -99,16 +99,62 @@ def _revocation_state(emb, extra_roots) -> str:
     return "good at signing time" if status.trusted and status.revocation_details is None else "not usable"
 
 
+def _xfa_datasets_ref(resolver):
+    """(reference, index in /XFA) of the XFA datasets packet in one revision, or (None, None)."""
+    from pyhanko.pdf_utils import generic
+
+    try:
+        acroform = resolver.root["/AcroForm"]
+        xfa = acroform["/XFA"]
+    except (KeyError, TypeError):
+        return None, None
+    if not isinstance(xfa, generic.ArrayObject):
+        return None, None
+    for i in range(0, len(xfa) - 1, 2):
+        if str(xfa[i]) == "datasets":
+            raw = xfa.raw_get(i + 1)
+            return (raw.reference, i + 1) if isinstance(raw, generic.IndirectObject) else (None, None)
+    return None, None
+
+
+def diff_policy():
+    """pyHanko's standard change analysis, plus: rewriting the XFA form data counts as form filling.
+
+    That is how Acrobat treats it. XFA forms keep their data (the ``datasets`` packet) apart from
+    the AcroForm fields, so filling an XFA form after a signature updates that packet. Only an
+    in-place update of the packet object is accepted; changing the ``/XFA`` array itself, which
+    could swap the form's layout or scripts, is still flagged.
+    """
+    from pyhanko.pdf_utils.reader import RawPdfPath
+    from pyhanko.sign.diff_analysis import DEFAULT_DIFF_POLICY, ModificationLevel, StandardDiffPolicy, WhitelistRule
+    from pyhanko.sign.diff_analysis.rules_api import Context, ReferenceUpdate
+
+    class XfaDataRule(WhitelistRule):
+        def apply(self, old, new):
+            old_ref, index = _xfa_datasets_ref(old)
+            new_ref, _ = _xfa_datasets_ref(new)
+            if old_ref is None or new_ref != old_ref:
+                return
+            path = RawPdfPath("/Root", "/AcroForm", "/XFA", index)
+            yield ReferenceUpdate(old_ref, context_checked=Context.from_absolute(old, path))
+
+    return StandardDiffPolicy(
+        global_rules=[*DEFAULT_DIFF_POLICY.global_rules, XfaDataRule().as_qualified(ModificationLevel.FORM_FILLING)],
+        form_rule=DEFAULT_DIFF_POLICY.form_rule,
+    )
+
+
 def verify(data: bytes, extra_roots: list[x509.Certificate] = (), online: bool = False) -> list[SignatureReport]:
     from signall.chain import split_trust_store
 
     reader = open_reader(data)
     roots, intermediates = split_trust_store(trust_certificates(extra_roots))
     context = ValidationContext(trust_roots=roots, other_certs=intermediates, allow_fetching=online)
+    policy = diff_policy()
     reports = []
     logging.getLogger("pyhanko").setLevel(logging.CRITICAL)
     for emb in reader.embedded_signatures:
-        status = validate_pdf_signature(emb, signer_validation_context=context)
+        status = validate_pdf_signature(emb, signer_validation_context=context, diff_policy=policy)
         cert = status.signing_cert
         reports.append(SignatureReport(
             field=emb.field_name,

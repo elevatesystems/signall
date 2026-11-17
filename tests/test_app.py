@@ -154,3 +154,15 @@ def test_app_signs_dynamic_xfa_with_typed_values(softhsm, dd2875, root_pem, pki)
     assert ds.get("form1.page1.Part1.Organization") == "Typed Org"
     (report,) = verify(outcome.data, _trusted(root_pem, pki))
     assert report.intact and report.trusted
+
+
+def test_static_xfa_is_shown_without_xfa(dd2842):
+    shown, config = _doc(dd2842).view()
+    assert shown.startswith(dd2842) and not config["xfa"] and not config["xfaData"]
+    assert "/XFA" not in open_reader(shown).root["/AcroForm"]
+
+
+def test_static_xfa_data_follows_acroform_edits(dd2842):
+    doc = _doc(dd2842)
+    name = "form1[0].page1[0].certAccptBy[0].name[0]"
+    assert doc.xfa_values_for({name: "Doe, Jane Q", "agree": True, "no.such[0]": "x"}) == {name: "Doe, Jane Q"}

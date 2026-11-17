@@ -22,7 +22,7 @@ from pyhanko.pdf_utils.reader import PdfFileReader
 
 from signall.pdf import SignallError, get as pget, open_writer, rect
 from signall.render import RenderResult, SignatureFieldSpec
-from signall.xfa import Datasets, SignatureField, Template, XfaPackets
+from signall.xfa import Datasets, SignatureField, Template, XfaPackets, printd
 
 Renderer = Callable[[bytes, list[SignatureFieldSpec]], RenderResult]
 
@@ -47,6 +47,16 @@ def _replace_packet(writer: IncrementalPdfFileWriter, packets: XfaPackets, name:
     index = packets.index(name)
     if index is None:
         raise SignallError(f"the form has no XFA {name} packet")
+    ref = packets.array.raw_get(index)
+    if isinstance(ref, generic.IndirectObject):
+        # Rewrite the packet in place: the /XFA array stays the same, which is how change analysis
+        # (signall.verify's XFA data rule) recognizes the update as form filling.
+        stream = ref.get_object()
+        stream.strip_filters()
+        stream._data = stream._encoded_data = data
+        stream.compress()
+        writer.mark_update(ref)
+        return
     packets.array[index] = writer.add_object(generic.StreamObject(stream_data=data))
     xfa_ref = writer.root["/AcroForm"].raw_get("/XFA")
     if isinstance(xfa_ref, generic.IndirectObject):
@@ -61,7 +71,7 @@ def _update_datasets(datasets: Datasets, values: dict[str, str], target: Signatu
         datasets.set(path, value)
     if target is not None and target.date_data_path and target.date_format:
         if not (datasets.get(target.date_data_path) or "").strip():
-            datasets.set(target.date_data_path, now.strftime(target.date_format))
+            datasets.set(target.date_data_path, printd(target.date_format, now))
 
 
 def _layout_input(data: bytes, datasets_xml: bytes) -> bytes:

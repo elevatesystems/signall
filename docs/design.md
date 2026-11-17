@@ -72,13 +72,20 @@ Phase 2 so far:
 Phase 3 so far (the GNOME app, `signall-app`):
 - **Window:** libadwaita 1.5, so it runs on GNOME 46. The document view is pdf.js's viewer in WebKitGTK; a sidebar lists the signature fields with their status (checked offline against the bundled DoD roots), and a banner asks for the card when none is inserted. Dark mode and narrow windows are handled.
 - **Signing:** click a highlighted field, or a field's Sign button, or use Add Signature to drag a box on a page. Signall asks for the PIN in its own dialog, signs on a worker thread (card polling shares that thread, so the two never overlap), and then offers to save "<name> - signed.pdf". An unsaved signed copy is never dropped silently.
-- **Filling XFA forms:** the user types into the form in the viewer. pdf.js writes the input into its copy of the `datasets` packet; Signall applies only the values that changed to the original data, inside its own single signed update. pdf.js's own save is never used: it rewrites every widget, blanks the appearance of empty fields, and marks empty signature fields as filled (`/V null`).
+- **Filling forms:** the user types into the form in the viewer, and Signall applies only what changed, inside its own single signed update. pdf.js's own save is never used as the document: it rewrites every widget, blanks the appearance of empty fields, and marks empty signature fields as filled (`/V null`).
+  - **AcroForm fields** (text, choice, check box, radio button): the viewer reports changed values; Signall sets `/V` and draws the appearance itself (`signall.acroform`). The CLI's `--set` does the same for PDFs without XFA.
+  - **Dynamic XFA:** pdf.js writes the input into its copy of the `datasets` packet, and Signall applies the values that differ from the original data.
+  - **Static XFA (DD 2842):** both. The XFA data paths are the AcroForm field names (forms made with Adobe's designer bind fields by name). The viewer shows a copy without `/XFA`, because pdf.js fills an empty AcroForm field from the XFA data and picks the wrong node when sections repeat field names.
+  - **Signing date:** when a form's signing script would stamp a date (DD 2875 `signedDate`, DD 2842 "DATE SIGNED"), Signall fills it with the form's own `util.printd` pattern, in both the XFA data and the AcroForm field.
+- **XFA data in change analysis:** Signall rewrites the `datasets` packet in place, and `signall verify` counts an in-place update of that one object as form filling, as Acrobat does. A change to the `/XFA` array itself is still flagged.
 - **Card troubleshooting:** "Check Smart Card" runs the `doctor` checks in a dialog, with fixes and a report to copy.
 
 Known gaps:
 - **Change analysis for XFA countersignatures:** a later signer re-renders the pages. Acrobat accepts this, but pyHanko's generic change analysis (used by `signall verify`) reports it as "other" changes. An XFA-aware policy has to distinguish an honest re-render from tampering with what non-Adobe viewers display.
 - **XFA `form` packet checksum** (see above).
-- **AcroForm text fields** cannot be filled yet; `--set` and the app fill XFA data only. In the app, plain AcroForms are read-only, and values typed into a static XFA form (DD 2842) reach Acrobat through the XFA data, but other viewers, including Signall's own, show the AcroForm fields empty.
+- **Field locks on XFA data:** `verify` accepts any change to the XFA data after a signature as form filling; it doesn't yet check the change against the signature's field lock (FieldMDP).
+- **Separate widget annotations:** pyHanko's change analysis accounts for new appearances only on merged field/widget dictionaries (as Adobe's tools write them). Filling a field whose widget is a separate `/Kids` entry, after a signature, is reported as "other" by `verify`.
+- **Comb fields** are drawn as ordinary text.
 
 ## Brand
 

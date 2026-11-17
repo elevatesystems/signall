@@ -173,6 +173,42 @@ def make_plain_pdf(text: str = "Certificate of Completion") -> bytes:
     return out.getvalue()
 
 
+def make_acroform_pdf() -> bytes:
+    """A one-page form with a text field, a multiline text field, a check box, and two radio buttons."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), "Training Acknowledgment", fontsize=18)
+
+    def add(kind, name, rect, **extra):
+        w = pymupdf.Widget()
+        w.field_type = kind
+        w.field_name = name
+        w.rect = pymupdf.Rect(*rect)
+        for key, value in extra.items():
+            setattr(w, key, value)
+        page.add_widget(w)
+
+    add(pymupdf.PDF_WIDGET_TYPE_TEXT, "name", (72, 100, 300, 120), text_fontsize=0)
+    add(pymupdf.PDF_WIDGET_TYPE_TEXT, "notes", (72, 130, 300, 190), field_flags=4096, text_fontsize=10)
+    add(pymupdf.PDF_WIDGET_TYPE_CHECKBOX, "agree", (72, 200, 86, 214))
+    add(pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, "status", (72, 230, 86, 244), button_caption="Military")
+    add(pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, "status", (120, 230, 134, 244), button_caption="Civilian")
+    # pymupdf names every radio button's "on" state /None; real forms name each option.
+    radios = [w for w in page.widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON]
+    for widget, option in zip(radios, ("Military", "Civilian")):
+        states = doc.xref_get_key(widget.xref, "AP/N")[1]
+        doc.xref_set_key(widget.xref, "AP/N", states.replace("/None", f"/{option}"))
+        doc.xref_set_key(widget.xref, "AS", "/Off")
+    return doc.tobytes()
+
+
+@pytest.fixture
+def acroform_pdf() -> bytes:
+    return make_acroform_pdf()
+
+
 @pytest.fixture
 def plain_pdf() -> bytes:
     return make_plain_pdf()

@@ -41,7 +41,7 @@ def test_dd2875_signature_fields(dd2875):
     assert user.caption.text == "11. USER SIGNATURE"
     assert user.caption.placement == "top" and round(user.caption.reserve_pt, 2) == 11.52
     assert user.date_data_path == ("form1", "page1", "Part1", "userSig", "signedDate")
-    assert user.date_format == "%Y%m%d"
+    assert user.date_format == "yyyymmdd"
     assert user.lock_action is None  # matches Acrobat: no field lock on the user's signature
     assert supervisor.lock_action == "include"
     assert "form1[0].page1[0].Part1[0].userName[0]" in supervisor.lock_fields
@@ -63,3 +63,15 @@ def test_datasets_roundtrip(dd2875):
     assert again.get("form1.page1.Part1.Organization") == "Example Org"
     assert again.get("form1.page1.Part1.userSig.signedDate") == "20260101"
     assert b"xfa:datasets" in ds.to_bytes()  # namespace prefix preserved
+
+
+def test_printd_is_english_and_matches_acrobat():
+    import datetime
+
+    from signall.xfa import printd
+
+    when = datetime.datetime(2026, 11, 7, 14, 5, 9)
+    assert printd("yyyymmdd", when) == "20261107"
+    assert printd("yyyymmmdd", when) == "2026Nov07"
+    assert printd("mmmm d, yyyy HH:MM:ss", when) == "November 7, 2026 14:05:09"
+    assert printd("h:MM tt", when) == "2:05 pm"

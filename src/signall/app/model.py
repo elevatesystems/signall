@@ -156,13 +156,15 @@ class Document:
     def view(self, dark: bool = False) -> tuple[bytes, dict]:
         """The bytes and configuration for the document view."""
         config = {
-            "xfa": self.dynamic_xfa, "forms": self.has_xfa, "dark": dark,
+            "xfa": self.dynamic_xfa, "forms": True, "xfaData": self.dynamic_xfa, "dark": dark,
             "fields": [
                 {"name": r.name, "path": r.path, "page": r.page, "rect": r.rect, "signed": r.signed,
                  "signer": r.signer, "date": r.date}
                 for r in self.rows
             ],
         }
+        if self.info.kind is Kind.STATIC_XFA:
+            return _without_xfa(self.data), config
         if not self.dynamic_xfa:
             return self.data, config
         # Once signed, a dynamic XFA form has AcroForm widgets and pdf.js would show the static
@@ -174,9 +176,39 @@ class Document:
             return self.data, config
         return xfa_sign._layout_input(self.data, datasets), config
 
+    def field_changes(self, changes: dict) -> dict[str, object]:
+        """The AcroForm values the user changed, as reported by the viewer (dynamic XFA has none)."""
+        if self.dynamic_xfa or not isinstance(changes, dict):
+            return {}
+        out: dict[str, object] = {}
+        for name, value in changes.items():
+            if isinstance(name, str) and isinstance(value, (str, bool)):
+                out[name] = value
+        return out
+
+    def xfa_values_for(self, fields: dict[str, object]) -> dict[str, str]:
+        """For a static XFA form: the XFA data matching AcroForm text changes.
+
+        Forms made with Adobe's designer bind each field to the data node with the same path as the
+        field's full name, so only paths that exist in the data are used.
+        """
+        if self.info.kind is not Kind.STATIC_XFA or not fields:
+            return {}
+        packets = XfaPackets.from_root(open_reader(self.data).root)
+        if packets is None or packets.get("datasets") is None:
+            return {}
+        data = Datasets(packets.get("datasets"))
+        out = {}
+        for name, value in fields.items():
+            if isinstance(value, str):
+                node = data._find(name, create=False)
+                if node is not None and not len(node):
+                    out[name] = value
+        return out
+
     def form_changes(self, viewer_copy_b64: str | None) -> dict[str, str]:
-        """The XFA values the user typed, from the viewer's saved copy of the document."""
-        if not viewer_copy_b64 or not self.has_xfa:
+        """The XFA values the user typed, from the viewer's saved copy of a dynamic XFA form."""
+        if not viewer_copy_b64 or not self.dynamic_xfa:
             return {}
         edited = XfaPackets.from_root(open_reader(base64.b64decode(viewer_copy_b64)).root)
         original = XfaPackets.from_root(open_reader(self.data).root)
@@ -184,6 +216,27 @@ class Document:
             return {}
         before = original.get("datasets") or b'<xfa:datasets xmlns:xfa="http://www.xfa.org/schema/xfa-data/1.0/"/>'
         return Datasets(edited.get("datasets")).changes_from(Datasets(before))
+
+
+def _without_xfa(data: bytes) -> bytes:
+    """A display copy of a static XFA form that viewers show from its AcroForm alone.
+
+    pdf.js fills an AcroForm field that has no value from the XFA data, and finds the wrong data
+    node when sections repeat field names (DD 2842: a value typed into 1a also shows up in 2a).
+    """
+    import io
+
+    from signall.pdf import open_writer
+
+    writer = open_writer(data)
+    acroform = writer.root["/AcroForm"]
+    if "/XFA" not in acroform:
+        return data
+    del acroform["/XFA"]
+    writer.update_container(acroform)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 
 @dataclass

@@ -6,6 +6,7 @@ signature fields and edits the datasets to fill values.
 """
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, field
 
@@ -52,7 +53,7 @@ class SignatureField:
     caption: Caption | None
     margins: tuple[float, float, float, float]  # left, bottom, right, top insets in points
     date_data_path: tuple[str, ...] | None = None  # datasets element the form stamps on signing
-    date_format: str | None = None                 # strftime format for that date
+    date_format: str | None = None                 # the form's util.printd pattern for that date, e.g. "yyyymmdd"
     lock_action: str | None = None                 # "include", "exclude" or "all": fields frozen by signing
     lock_fields: tuple[str, ...] = ()              # SOM paths of the locked fields
 
@@ -197,11 +198,30 @@ class Template:
         for script in node.iter(self._tag("script")):
             m = re.search(r"(\w+)\.rawValue\s*=\s*util\.printd\(\s*\"([^\"]+)\"", script.text or "")
             if m:
-                fmt = m.group(2)
-                for token, repl in (("yyyy", "%Y"), ("mm", "%m"), ("dd", "%d"), ("HH", "%H"), ("MM", "%M"), ("ss", "%S")):
-                    fmt = fmt.replace(token, repl)
-                return tuple(names[:-1]) + (m.group(1),), fmt
+                return tuple(names[:-1]) + (m.group(1),), m.group(2)
         return None, None
+
+
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+           "November", "December"]
+_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_PRINTD = re.compile(r"yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|HH|H|hh|h|MM|M|ss|s|tt|'[^']*'")
+
+
+def printd(pattern: str, when: datetime.datetime) -> str:
+    """Format a date like Acrobat's ``util.printd`` (always in English, whatever the locale)."""
+    h12 = when.hour % 12 or 12
+    tokens = {
+        "yyyy": f"{when.year:04d}", "yy": f"{when.year % 100:02d}",
+        "mmmm": _MONTHS[when.month - 1], "mmm": _MONTHS[when.month - 1][:3],
+        "mm": f"{when.month:02d}", "m": str(when.month),
+        "dddd": _DAYS[when.weekday()], "ddd": _DAYS[when.weekday()][:3],
+        "dd": f"{when.day:02d}", "d": str(when.day),
+        "HH": f"{when.hour:02d}", "H": str(when.hour), "hh": f"{h12:02d}", "h": str(h12),
+        "MM": f"{when.minute:02d}", "M": str(when.minute), "ss": f"{when.second:02d}", "s": str(when.second),
+        "tt": "am" if when.hour < 12 else "pm",
+    }
+    return _PRINTD.sub(lambda m: m.group(0)[1:-1] if m.group(0).startswith("'") else tokens[m.group(0)], pattern)
 
 
 class Datasets:

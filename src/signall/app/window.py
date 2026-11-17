@@ -400,11 +400,13 @@ class SignallWindow(Adw.ApplicationWindow):
             return
         self._set_busy(True)
         doc = self.doc
-        self.view.collect(lambda data, _error: self._sign(doc, request, data, drawn))
+        self.view.collect(lambda data, fields, _error: self._sign(doc, request, data, fields, drawn))
 
-    def _sign(self, doc: Document, request: SignRequest, viewer_copy: str | None, drawn: bool) -> None:
+    def _sign(self, doc: Document, request: SignRequest, viewer_copy: str | None, fields: dict,
+              drawn: bool) -> None:
+        request.fields = doc.field_changes(fields)
         try:
-            request.values = doc.form_changes(viewer_copy)
+            request.values = doc.form_changes(viewer_copy) or doc.xfa_values_for(request.fields)
         except Exception:
             request.values = {}
 

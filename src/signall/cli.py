@@ -81,8 +81,14 @@ def cmd_sign(args) -> int:
         if not sep:
             raise SignallError(f"--set needs PATH=VALUE, got {item!r}")
         values[key.strip()] = value
+    fields = {}
+    if values:
+        from signall.document import Kind, inspect
+
+        if inspect(data).kind in (Kind.PLAIN, Kind.ACROFORM):
+            fields, values = values, {}  # no XFA data: --set names AcroForm fields
     request = SignRequest(
-        field=args.field, box=parse_box(args.box) if args.box else None, values=values,
+        field=args.field, box=parse_box(args.box) if args.box else None, values=values, fields=fields,
         reason=args.reason, location=args.location,
     )
 
@@ -195,7 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true", help="replace the output file if it exists")
     p.add_argument("--field", help="signature field to sign (default: the first empty one)")
     p.add_argument("--box", help="add a signature box instead: PAGE:x0,y0,x1,y1 in points from the bottom-left")
-    p.add_argument("--set", action="append", metavar="PATH=VALUE", help="fill an XFA form value before signing")
+    p.add_argument("--set", action="append", metavar="PATH=VALUE", help="fill a form value before signing: an XFA data path, or a field name in a PDF without XFA")
     p.add_argument("--reason")
     p.add_argument("--location")
     p.add_argument("--module", help="PKCS#11 module (default: p11-kit proxy or OpenSC)")
