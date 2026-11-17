@@ -28,6 +28,19 @@ signall sign cert.pdf --box 1:180,78,373,114   # add a signature box on page 1
 signall verify "form - signed.pdf"
 ```
 
+## Try the app
+
+With the same virtual environment, run `signall-app`, or `signall-app form.pdf`. Open a PDF, type into the form if it has one, then click a highlighted signature field or use **Add Signature** to draw a box. Signall asks for your PIN and saves a signed copy next to the original.
+
+To add Signall to the GNOME app grid and to "Open With" for PDFs:
+
+```sh
+mkdir -p ~/.local/share/applications
+sed "s|^Exec=signall-app|Exec=$PWD/.venv/bin/signall-app|" data/io.github.elevatesystems.Signall.desktop \
+    > ~/.local/share/applications/io.github.elevatesystems.Signall.desktop
+cp -r data/icons ~/.local/share/
+```
+
 ## Tests
 
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command).

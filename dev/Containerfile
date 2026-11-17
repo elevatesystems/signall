@@ -4,6 +4,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         python3 python3-pip python3-gobject gtk4 libadwaita webkitgtk6.0 \
         softhsm opensc p11-kit p11-kit-trust openssl gnutls-utils \
         xorg-x11-server-Xvfb mesa-dri-drivers dbus-daemon \
+        librsvg2 abattis-cantarell-vf-fonts python3-pillow \
         dejavu-sans-fonts liberation-serif-fonts liberation-sans-fonts \
     && dnf clean all
 WORKDIR /src

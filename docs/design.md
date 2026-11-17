@@ -69,9 +69,16 @@ Phase 2 so far:
 - **Bundled DoD certificates:** Signall works on a machine with no DoD certificates installed: chains, revocation data, `verify`, and `doctor` all use the bundled roots (DoD Root CA 3–6) and intermediates (bundle v5.14).
 - **Chain and revocation data:** like Acrobat, every signature carries the signer's CA chain up to the root and, when online, OCSP responses for the signer and its issuing CA in the `adbe-revocationInfoArchival` attribute. The chain comes from the system trust store or the certificate's AIA URL. Only self-signed certificates in the trust store anchor the chain, so the intermediate's status is covered even when the store lists DoD intermediates as anchors. DoD's OCSP responder answers for both certificates, so no CRLs are downloaded. Signall refuses to sign with a revoked certificate. Offline (`--offline`, or when the servers can't be reached), it embeds the chain without revocation data and says so. `signall verify` reports whether revocation data is embedded and checks it as of the signing time.
 
+Phase 3 so far (the GNOME app, `signall-app`):
+- **Window:** libadwaita 1.5, so it runs on GNOME 46. The document view is pdf.js's viewer in WebKitGTK; a sidebar lists the signature fields with their status (checked offline against the bundled DoD roots), and a banner asks for the card when none is inserted. Dark mode and narrow windows are handled.
+- **Signing:** click a highlighted field, or a field's Sign button, or use Add Signature to drag a box on a page. Signall asks for the PIN in its own dialog, signs on a worker thread (card polling shares that thread, so the two never overlap), and then offers to save "<name> - signed.pdf". An unsaved signed copy is never dropped silently.
+- **Filling XFA forms:** the user types into the form in the viewer. pdf.js writes the input into its copy of the `datasets` packet; Signall applies only the values that changed to the original data, inside its own single signed update. pdf.js's own save is never used: it rewrites every widget, blanks the appearance of empty fields, and marks empty signature fields as filled (`/V null`).
+- **Card troubleshooting:** "Check Smart Card" runs the `doctor` checks in a dialog, with fixes and a report to copy.
+
+Known gaps:
 - **Change analysis for XFA countersignatures:** a later signer re-renders the pages. Acrobat accepts this, but pyHanko's generic change analysis (used by `signall verify`) reports it as "other" changes. An XFA-aware policy has to distinguish an honest re-render from tampering with what non-Adobe viewers display.
 - **XFA `form` packet checksum** (see above).
-- **AcroForm text fields** cannot be filled yet; `--set` fills XFA data only.
+- **AcroForm text fields** cannot be filled yet; `--set` and the app fill XFA data only. In the app, plain AcroForms are read-only, and values typed into a static XFA form (DD 2842) reach Acrobat through the XFA data, but other viewers, including Signall's own, show the AcroForm fields empty.
 
 ## Brand
 

@@ -23,6 +23,9 @@ test = ["pytest>=8.0", "pymupdf>=1.24"]
 [project.scripts]
 signall = "signall.cli:main"
 
+[project.gui-scripts]
+signall-app = "signall.app:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/signall"]
 artifacts = ["src/signall/render/pdfjs/**"]

@@ -247,5 +247,31 @@ class Datasets:
             raise SignallError(f"{path} is a group of fields, not a single value")
         node.text = value
 
+    def values(self) -> dict[str, str]:
+        """Every value in the data, keyed by its indexed path (``form1.page1.Part1[0].Phone``)."""
+        out: dict[str, str] = {}
+
+        def walk(node, prefix: str) -> None:
+            counts: dict[str, int] = {}
+            for child in node:
+                if not isinstance(child.tag, str):
+                    continue  # comments, processing instructions
+                name = _local(child.tag)
+                index = counts.get(name, 0)
+                counts[name] = index + 1
+                path = f"{prefix}.{name}[{index}]" if prefix else f"{name}[{index}]"
+                if len(child):
+                    walk(child, path)
+                else:
+                    out[path] = child.text or ""
+
+        walk(self.data, "")
+        return out
+
+    def changes_from(self, original: "Datasets") -> dict[str, str]:
+        """The values that differ from ``original``: what a viewer's edits changed."""
+        before = original.values()
+        return {path: value for path, value in self.values().items() if before.get(path, "") != value}
+
     def to_bytes(self) -> bytes:
         return etree.tostring(self.root, encoding="UTF-8", xml_declaration=False)

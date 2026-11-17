@@ -4,6 +4,7 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 
+from pyhanko.pdf_utils import generic
 from pyhanko.sign.fields import enumerate_sig_fields
 
 from signall.pdf import get as pget, open_reader
@@ -33,6 +34,7 @@ class FieldInfo:
     signer: str | None = None
     signing_time: str | None = None
     page: int | None = None
+    rect: tuple[float, float, float, float] | None = None  # PDF points on ``page``
 
 
 @dataclass
@@ -76,16 +78,22 @@ def inspect(data: bytes) -> DocumentInfo:
         title_obj = pget(info, "/Title")
         title = str(title_obj) if title_obj is not None else None
 
+    page_of = _widget_pages(root)
     fields: list[FieldInfo] = []
     for fq_name, value, field_ref in enumerate_sig_fields(reader, filled_status=None):
         signer = when = None
         if value is not None:
             value = value.get_object()
+            if not isinstance(value, generic.DictionaryObject):
+                value = None  # "/V null", as some editors write for an empty field
+        if value is not None:
             raw_name = pget(value, "/Name")
             signer = str(raw_name) if raw_name is not None else None
             raw_time = pget(value, "/M")
             when = str(raw_time) if raw_time is not None else None
-        fields.append(FieldInfo(name=fq_name, signed=value is not None, signer=signer, signing_time=when))
+        page, box = _placement(field_ref.get_object(), page_of)
+        fields.append(FieldInfo(name=fq_name, signed=value is not None, signer=signer, signing_time=when,
+                                page=page, rect=box))
 
     xfa_fields: list[SignatureField] = []
     if packets is not None:
@@ -103,6 +111,49 @@ def inspect(data: bytes) -> DocumentInfo:
         xfa_signature_fields=xfa_fields,
         revisions=reader.xrefs.total_revisions,
     )
+
+
+def _widget_pages(root) -> dict[tuple[int, int], int]:
+    """Map each annotation's object reference to the index of the page that shows it."""
+    pages: dict[tuple[int, int], int] = {}
+    from pyhanko.pdf_utils.generic import IndirectObject
+
+    def walk(node, index: int) -> int:
+        node = node.get_object()
+        if str(pget(node, "/Type", "")) == "/Pages" or "/Kids" in node:
+            for kid in pget(node, "/Kids", []):
+                index = walk(kid, index)
+            return index
+        for annot in pget(node, "/Annots", []) or []:
+            if isinstance(annot, IndirectObject):
+                pages[(annot.idnum, annot.generation)] = index
+        return index + 1
+
+    walk(root["/Pages"], 0)
+    return pages
+
+
+def _placement(field, page_of) -> tuple[int | None, tuple[float, float, float, float] | None]:
+    """The page and rectangle of a signature field's (first) widget."""
+    from pyhanko.pdf_utils.generic import IndirectObject
+
+    widgets = [field] if "/Rect" in field else []
+    for kid in pget(field, "/Kids", []) or []:
+        widgets.append(kid)
+    for widget in widgets:
+        ref = widget if isinstance(widget, IndirectObject) else None
+        obj = widget.get_object()
+        if "/Rect" not in obj:
+            continue
+        r = [float(v) for v in pget(obj, "/Rect")]
+        box = (min(r[0], r[2]), min(r[1], r[3]), max(r[0], r[2]), max(r[1], r[3]))
+        page = page_of.get((ref.idnum, ref.generation)) if ref is not None else None
+        if page is None and getattr(field, "container_ref", None) is not None:
+            page = page_of.get((field.container_ref.idnum, field.container_ref.generation))
+        if box[2] - box[0] <= 0 or box[3] - box[1] <= 0:
+            return page, None  # an invisible field
+        return page, box
+    return None, None
 
 
 def is_pure_xfa_layout(data: bytes) -> bool:

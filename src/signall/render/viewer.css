@@ -1,0 +1,123 @@
+:root {
+  --signall-bg: #ebebed;
+  --signall-accent: #1c71d8;
+  --signall-accent-fill: rgb(28 113 216 / 0.12);
+  --signall-signed: #26a269;
+  --signall-signed-fill: rgb(38 162 105 / 0.10);
+  --page-border: none;
+  --page-margin: 12px auto;
+  color-scheme: light;
+}
+
+:root.dark {
+  --signall-bg: #1e1e20;
+  --signall-accent: #78aeed;
+  --signall-accent-fill: rgb(120 174 237 / 0.18);
+  color-scheme: dark;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--signall-bg);
+  font-family: "Adwaita Sans", Cantarell, sans-serif;
+}
+
+#viewerContainer {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.pdfViewer .page {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.05);
+  border-radius: 2px;
+}
+
+/* Signature fields the user can click to sign. */
+.signall-field {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--signall-accent);
+  border-radius: 4px;
+  background: var(--signall-accent-fill);
+  cursor: pointer;
+  z-index: 10;
+  transition: background 120ms;
+}
+
+.signall-field:hover { background: rgb(28 113 216 / 0.24); }
+
+.signall-field::after {
+  content: "Sign here";
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--signall-accent);
+  color: white;
+  font: 600 11px/1.4 "Adwaita Sans", Cantarell, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* XFA signature fields are marked in place (the element itself carries the class). */
+.xfaLayer .signall-xfa-field {
+  outline: 2px dashed var(--signall-accent);
+  outline-offset: -2px;
+  background: var(--signall-accent-fill) !important;
+  cursor: pointer;
+  position: relative;
+}
+
+.xfaLayer .signall-xfa-field:hover { background: rgb(28 113 216 / 0.24) !important; }
+
+.xfaLayer .signall-xfa-field::after {
+  content: "Sign here";
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--signall-accent);
+  color: white;
+  font: 600 11px/1.4 "Adwaita Sans", Cantarell, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.xfaLayer .signall-xfa-signed {
+  outline: 1px solid var(--signall-signed);
+  outline-offset: -1px;
+  background: var(--signall-signed-fill) !important;
+  position: relative;
+}
+
+.signall-xfa-signed .signall-stamp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 6px;
+  font: 9px/1.25 "Liberation Sans", Arial, sans-serif;
+  color: #000;
+  overflow: hidden;
+}
+
+.signall-stamp b { font-size: 10px; }
+
+/* Drawing a new signature box. */
+body.signall-draw .pdfViewer .page { cursor: crosshair; }
+body.signall-draw .textLayer, body.signall-draw .annotationLayer { pointer-events: none; }
+
+.signall-draft {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--signall-accent);
+  border-radius: 4px;
+  background: var(--signall-accent-fill);
+  z-index: 20;
+  pointer-events: none;
+}

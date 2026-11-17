@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Signall
+GenericName=PDF Signer
+Comment=Sign PDFs and forms with your CAC
+Exec=signall-app %U
+Icon=signall
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/pdf;
+Keywords=sign;signature;CAC;PIV;smart card;PDF;XFA;DD 2875;
+StartupNotify=true
