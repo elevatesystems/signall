@@ -10,9 +10,11 @@ Sign PDFs with a US DoD Common Access Card (CAC) on Linux. Signall is a native G
 
 Needs Fedora 40 or newer with `python3-gobject`, `gtk4`, `webkitgtk6.0`, `opensc`, and `pcsc-lite`.
 
+Build the virtual environment with the system Python (`/usr/bin/python3`), so that it can see Fedora's PyGObject. A Python from asdf, pyenv, or similar tools cannot, and may also be older than the 3.12 that Signall requires. In fish, activate with `source .venv/bin/activate.fish`.
+
 ```sh
 python3 scripts/fetch-pdfjs.py          # downloads the pinned pdf.js release
-python3 -m venv --system-site-packages .venv && . .venv/bin/activate
+/usr/bin/python3 -m venv --system-site-packages .venv && . .venv/bin/activate
 pip install -e .
 
 signall tokens                          # find the card and its signing certificate
