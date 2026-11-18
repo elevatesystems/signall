@@ -1,0 +1,67 @@
+name: Release
+
+# Push a tag such as v0.1.0 (matching __version__ in src/signall/__init__.py) to publish a release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check that the tag matches the version
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/signall/__init__.py)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != version $version"; exit 1; }
+      - run: python3 scripts/fetch-pdfjs.py
+      - run: dev/run-tests.sh
+
+  rpm:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        fedora: [40, 41, 42, 43, 44, 45]
+    container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
+    steps:
+      - run: dnf -y -q install git tar
+      - uses: actions/checkout@v5
+      - name: Build
+        run: packaging/build-rpm.sh dist
+      - name: Install and run it
+        run: |
+          dnf -y -q install dist/*.rpm
+          signall --version
+          signall inspect tests/fixtures/dd2875-blank.pdf
+      - name: Name it for "latest" downloads
+        run: |
+          rpm=$(ls dist/*.rpm)
+          cp "$rpm" "dist/signall-latest.fc${{ matrix.fedora }}.x86_64.rpm"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: rpm-fc${{ matrix.fedora }}
+          path: dist/*.rpm
+
+  release:
+    needs: rpm
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=$([[ "$GITHUB_REF_NAME" == *dev* || "$GITHUB_REF_NAME" == *rc* ]] && echo --prerelease || true)
+          gh release create "$GITHUB_REF_NAME" dist/*.rpm --repo "$GITHUB_REPOSITORY" \
+            --title "Signall ${GITHUB_REF_NAME#v}" --generate-notes $prerelease
