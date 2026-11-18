@@ -21,13 +21,23 @@ jobs:
       - run: python3 scripts/fetch-pdfjs.py
       - run: dev/run-tests.sh
 
+  versions:
+    runs-on: ubuntu-24.04
+    outputs:
+      list: ${{ steps.fedora.outputs.list }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: fedora
+        run: echo "list=$(python3 packaging/fedora-versions.py)" >> "$GITHUB_OUTPUT"
+
+  # RPMs attached to the GitHub release, for every Fedora from 40 to the newest stable one.
   rpm:
-    needs: test
+    needs: [test, versions]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       matrix:
-        fedora: [40, 41, 42, 43, 44, 45]
+        fedora: ${{ fromJSON(needs.versions.outputs.list) }}
     container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
     steps:
       - run: dnf -y -q install git tar
@@ -65,3 +75,24 @@ jobs:
           prerelease=$([[ "$GITHUB_REF_NAME" == *dev* || "$GITHUB_REF_NAME" == *rc* ]] && echo --prerelease || true)
           gh release create "$GITHUB_REF_NAME" dist/*.rpm --repo "$GITHUB_REPOSITORY" \
             --title "Signall ${GITHUB_REF_NAME#v}" --generate-notes $prerelease
+
+  # The COPR repository (elevate-systems/Signall), which delivers updates through dnf and
+  # GNOME Software. COPR builds for each Fedora it has enabled, and adds new Fedora releases
+  # itself when they branch.
+  copr:
+    needs: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - run: dnf -y -q install git tar rpm-build copr-cli
+      - uses: actions/checkout@v5
+      - name: Build the source RPM
+        run: packaging/build-rpm.sh --srpm dist
+      - name: Build in COPR
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+        run: |
+          mkdir -p ~/.config
+          printf '%s\n' "$COPR_CONFIG" > ~/.config/copr
+          copr-cli build elevate-systems/Signall dist/*.src.rpm

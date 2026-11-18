@@ -9,12 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  versions:
+    runs-on: ubuntu-24.04
+    outputs:
+      newest: ${{ steps.fedora.outputs.newest }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: fedora
+        run: echo "newest=$(python3 packaging/fedora-versions.py --newest)" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: versions
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest supported Fedora and the newest stable one.
+        fedora: ["40", "${{ needs.versions.outputs.newest }}"]
+    name: test (Fedora ${{ matrix.fedora }})
     steps:
       - uses: actions/checkout@v5
       - name: Fetch pdf.js
         run: python3 scripts/fetch-pdfjs.py
-      - name: Run the tests in the Fedora 40 container
-        run: dev/run-tests.sh
+      - name: Run the tests in a Fedora ${{ matrix.fedora }} container
+        run: FEDORA=${{ matrix.fedora }} dev/run-tests.sh
