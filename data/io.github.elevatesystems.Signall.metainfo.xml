@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.elevatesystems.Signall</id>
+  <name>Signall</name>
+  <summary>Sign PDFs and forms with your CAC</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.elevatesystems">
+    <name>The Signall contributors</name>
+  </developer>
+  <description>
+    <p>
+      Signall signs PDFs with a US DoD Common Access Card (CAC). Open a PDF, fill it in,
+      click a signature field or draw a box, and enter your PIN. The signatures validate
+      in Adobe Acrobat.
+    </p>
+    <ul>
+      <li>Any PDF: draw a box where the signature goes</li>
+      <li>PDF forms: fill in the fields and sign in the form's own signature field</li>
+      <li>XFA forms such as DD Form 2875 and DD Form 2842, including forms several people sign in turn</li>
+      <li>Signatures carry the DoD certificate chain and revocation data, like Acrobat's</li>
+      <li>A smart card check that explains reader, card, and certificate problems</li>
+    </ul>
+    <p>Signall is not affiliated with or endorsed by the Department of Defense, DISA, or Adobe.</p>
+  </description>
+  <launchable type="desktop-id">io.github.elevatesystems.Signall.desktop</launchable>
+  <url type="homepage">https://github.com/elevatesystems/signall</url>
+  <url type="bugtracker">https://github.com/elevatesystems/signall/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Signing an equipment hand receipt</caption>
+      <image>https://raw.githubusercontent.com/elevatesystems/signall/master/assets/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <provides>
+    <binary>signall</binary>
+    <binary>signall-app</binary>
+  </provides>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-17">
+      <description>
+        <p>First release: the GNOME app and the signall command line.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -12,21 +12,21 @@ It signs:
 
 Signatures carry the DoD certificate chain and revocation (OCSP) data, as Acrobat's do. The DoD root and intermediate certificates are bundled, so nothing else needs to be installed.
 
-**Status:** early development. The command line has been tested with a real CAC on Fedora 40; the app is new and has so far been tested with a simulated card. There is no package yet, so install from source as shown below. See [docs/design.md](docs/design.md) for details and known gaps.
+**Status:** early development. The command line has been tested with a real CAC on Fedora 40; the app is new and has so far been tested with a simulated card. See [docs/design.md](docs/design.md) for details and known gaps.
 
 ## Install
 
-Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. If `git` is missing, install it first with `sudo dnf install git`.
+Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. Install the latest release with:
 
 ```sh
-git clone https://github.com/elevatesystems/signall.git
-cd signall && ./install.sh
+sudo dnf install https://github.com/elevatesystems/signall/releases/latest/download/signall-latest.fc$(rpm -E %fedora).x86_64.rpm
 ```
 
-The script installs any missing system packages and starts the smart card service; for those two steps it asks for your password. Everything else goes in your home folder (`~/.local`), and you can delete the `signall` folder afterward. Then open **Signall** from the app search.
+Then open **Signall** from the app search. To update, run the same command again; to uninstall, `sudo dnf remove signall`. Each release, with its changes, is listed on the [releases page](https://github.com/elevatesystems/signall/releases).
 
-- **Update:** `git pull && ./install.sh` (clone again if you deleted the folder).
-- **Uninstall:** `./install.sh --uninstall` (from a fresh clone, if you deleted the folder).
+If the smart card service isn't running yet, start it with `sudo systemctl enable --now pcscd.socket` (Fedora usually starts it on demand).
+
+**From source**, for the latest unreleased changes: `git clone https://github.com/elevatesystems/signall.git && cd signall && ./install.sh`. The script installs what Signall needs and puts Signall itself in your home folder (`~/.local`). Run it again after `git pull` to update; `./install.sh --uninstall` removes it.
 
 ## Use the app
 
@@ -89,6 +89,8 @@ python3 scripts/fetch-pdfjs.py
 ```
 
 Use the system Python (`/usr/bin/python3`): it is the one that can see Fedora's GTK libraries. A Python from asdf, pyenv, or similar tools cannot.
+
+To publish a release, set `__version__` in `src/signall/__init__.py`, add a `<release>` entry to `data/io.github.elevatesystems.Signall.metainfo.xml`, commit, then tag and push (`git tag v0.2.0 && git push origin v0.2.0`). The release workflow runs the tests, builds and test-installs an RPM for each supported Fedora release (`packaging/build-rpm.sh`), and publishes them on the releases page.
 
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command). `scripts/update-dod-certs.py` refreshes the bundled DoD certificates from DISA.
 

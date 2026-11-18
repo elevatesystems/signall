@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "signall"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Sign PDFs, including dynamic XFA forms, with a US DoD CAC on Linux"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,6 +25,9 @@ signall = "signall.cli:main"
 
 [project.gui-scripts]
 signall-app = "signall.app:main"
+
+[tool.hatch.version]
+path = "src/signall/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/signall"]
