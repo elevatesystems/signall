@@ -1,0 +1,20 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pdf.js
+        run: python3 scripts/fetch-pdfjs.py
+      - name: Run the tests in the Fedora 40 container
+        run: dev/run-tests.sh
