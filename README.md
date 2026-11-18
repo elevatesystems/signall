@@ -5,7 +5,11 @@
   </picture>
 </h1>
 
-Sign PDFs with a US DoD Common Access Card (CAC) on Linux. Signall is a native GNOME app, and its signatures validate in Adobe Acrobat. It signs:
+Signall is a GNOME app for signing PDFs with a US DoD Common Access Card (CAC) on Linux. Open a PDF, fill it in, click a signature field or draw a box, and enter your PIN. The signatures validate in Adobe Acrobat. A `signall` command-line tool is included for scripting.
+
+<p align="center"><img src="assets/screenshot.png" width="800" alt="Signall showing an equipment hand receipt: the sidebar lists a valid signature by the issuer and an unsigned field for the receiver, which is highlighted on the page with a Sign here label"></p>
+
+It signs:
 
 - **Any PDF:** draw a box where the signature goes.
 - **PDF forms:** fill in the fields and sign in the form's own signature field.

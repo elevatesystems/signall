@@ -72,6 +72,18 @@ def sentence_case(text: str) -> str:
     return out[:1].upper() + out[1:]
 
 
+def field_label(name: str) -> str:
+    """A readable label from a field name: ``ReceivedBy`` → ``Received by``, ``Signature1`` → ``Signature 1``."""
+    last = re.sub(r"\[\d+\]$", "", name.rsplit(".", 1)[-1])
+    words = re.sub(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Za-z])(?=\d)|[_\-]+", " ", last).split()
+    if not words:
+        return name
+    if all(w.isupper() for w in words if w.isalpha()):
+        return sentence_case(" ".join(words))
+    out = " ".join(w if w.upper() in ACRONYMS and w.isupper() else w.lower() for w in words)
+    return out[:1].upper() + out[1:]
+
+
 def _xfa_label(f) -> str:
     caption = (f.caption.text if f.caption else "").strip()
     caption = re.sub(r"\(.*?\)|\(.*$", "", caption, flags=re.S)  # drop explanations in parentheses
@@ -127,8 +139,8 @@ class Document:
         for f in self.info.signature_fields:
             if f.name in xfa_by_som:
                 label = _xfa_label(xfa_by_som[f.name])
-            else:  # "Signature1" → "Signature 1"
-                label = re.sub(r"(?<=[A-Za-z])(?=\d+$)", " ", re.sub(r"\[\d+\]$", "", f.name.rsplit(".", 1)[-1]))
+            else:
+                label = field_label(f.name)
             rows.append(FieldRow(
                 name=f.name, label=label, signed=f.signed,
                 signer=display_name(f.signer) if f.signed else None, date=pdf_date(f.signing_time),

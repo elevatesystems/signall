@@ -33,6 +33,15 @@ def test_sentence_case_keeps_acronyms():
     assert sentence_case("INFORMATION OWNER/OPR SIGNATURE") == "Information owner/OPR signature"
 
 
+def test_field_label():
+    from signall.app.model import field_label
+
+    assert field_label("ReceivedBy") == "Received by"
+    assert field_label("Signature1") == "Signature 1"
+    assert field_label("form1[0].supervisor_sig[0]") == "Supervisor sig"
+    assert field_label("ISSO_SIGNATURE") == "ISSO signature"
+
+
 def test_output_name():
     assert output_name(Path("form.pdf")) == "form - signed.pdf"
     assert output_name(Path("form - signed.pdf")) == "form - signed.pdf"
