@@ -1,7 +1,9 @@
-# Development and test environment matching the target desktop (Fedora 40 / GNOME 46).
-FROM registry.fedoraproject.org/fedora:40
+# Development and test environment matching the target desktop: Fedora 40 / GNOME 46 by default,
+# or another release with --build-arg FEDORA=45.
+ARG FEDORA=40
+FROM registry.fedoraproject.org/fedora:${FEDORA}
 RUN dnf -y install --setopt=install_weak_deps=False \
-        python3 python3-pip python3-gobject gtk4 libadwaita webkitgtk6.0 \
+        python3 python3-pip python3-devel gcc python3-gobject gobject-introspection gtk4 libadwaita webkitgtk6.0 \
         softhsm opensc p11-kit p11-kit-trust openssl gnutls-utils \
         xorg-x11-server-Xvfb mesa-dri-drivers dbus-daemon \
         librsvg2 abattis-cantarell-vf-fonts python3-pillow \

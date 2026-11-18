@@ -174,7 +174,11 @@ def make_plain_pdf(text: str = "Certificate of Completion") -> bytes:
 
 
 def make_acroform_pdf() -> bytes:
-    """A one-page form with a text field, a multiline text field, a check box, and two radio buttons."""
+    """A one-page form with a text field, a multiline text field, a check box, and two radio buttons.
+
+    This made tests/fixtures/acroform.pdf, which the tests use because pymupdf 1.28 (the newest
+    with Python 3.15 wheels) can't build radio buttons.
+    """
     import pymupdf
 
     doc = pymupdf.open()
@@ -206,7 +210,7 @@ def make_acroform_pdf() -> bytes:
 
 @pytest.fixture
 def acroform_pdf() -> bytes:
-    return make_acroform_pdf()
+    return (FIXTURES / "acroform.pdf").read_bytes()
 
 
 @pytest.fixture

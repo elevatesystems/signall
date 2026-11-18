@@ -16,13 +16,20 @@ Signatures carry the DoD certificate chain and revocation (OCSP) data, as Acroba
 
 ## Install
 
-Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. Install the latest release with:
+Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. Install it with:
+
+```sh
+sudo dnf copr enable elevate-systems/Signall
+sudo dnf install signall
+```
+
+Then open **Signall** from the app search. Updates arrive with your regular system updates, in GNOME Software or `dnf upgrade`. To uninstall, run `sudo dnf remove signall`. Each release, with its changes, is listed on the [releases page](https://github.com/elevatesystems/signall/releases).
+
+The repository (on Fedora's [COPR](https://copr.fedorainfracloud.org/coprs/elevate-systems/Signall/) service) covers the Fedora releases that are still supported, on x86_64 and ARM. On Fedora 40 to 42, install the release RPM instead; it doesn't update itself, so run the same command again for a new version:
 
 ```sh
 sudo dnf install https://github.com/elevatesystems/signall/releases/latest/download/signall-latest.fc$(rpm -E %fedora).x86_64.rpm
 ```
-
-Then open **Signall** from the app search. To update, run the same command again; to uninstall, `sudo dnf remove signall`. Each release, with its changes, is listed on the [releases page](https://github.com/elevatesystems/signall/releases).
 
 If the smart card service isn't running yet, start it with `sudo systemctl enable --now pcscd.socket` (Fedora usually starts it on demand).
 
@@ -90,7 +97,7 @@ python3 scripts/fetch-pdfjs.py
 
 Use the system Python (`/usr/bin/python3`): it is the one that can see Fedora's GTK libraries. A Python from asdf, pyenv, or similar tools cannot.
 
-To publish a release, set `__version__` in `src/signall/__init__.py`, add a `<release>` entry to `data/io.github.elevatesystems.Signall.metainfo.xml`, commit, then tag and push (`git tag v0.2.0 && git push origin v0.2.0`). The release workflow runs the tests, builds and test-installs an RPM for each supported Fedora release (`packaging/build-rpm.sh`), and publishes them on the releases page.
+To publish a release, set `__version__` in `src/signall/__init__.py`, add a `<release>` entry to `data/io.github.elevatesystems.Signall.metainfo.xml`, commit, then tag and push (`git tag v0.2.0 && git push origin v0.2.0`). The release workflow runs the tests, builds and test-installs an RPM for each Fedora release from 40 to the newest (`packaging/build-rpm.sh`), publishes them on the releases page, and builds the release in COPR. The Fedora list comes from `packaging/fedora-versions.py`, so a new Fedora is included without changes here.
 
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command). `scripts/update-dod-certs.py` refreshes the bundled DoD certificates from DISA.
 

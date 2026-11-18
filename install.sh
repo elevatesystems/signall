@@ -10,7 +10,7 @@ APP_ID=io.github.elevatesystems.Signall
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 HOME_DIR="$DATA/signall"
 BIN="$HOME/.local/bin"
-PACKAGES=(python3-gobject gtk4 libadwaita webkitgtk6.0 opensc pcsc-lite pcsc-lite-ccid)
+PACKAGES=(python3-gobject gobject-introspection gtk4 libadwaita webkitgtk6.0 opensc pcsc-lite pcsc-lite-ccid)
 
 cd "$(dirname "$0")"
 say() { printf '\033[1m%s\033[0m\n' "$*"; }

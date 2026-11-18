@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Run a command in the Fedora 40 dev container with a virtual display.
-# Usage: dev/run-tests.sh [command...]   (default: pytest)
+# Run a command in the dev container (Fedora 40 by default) with a virtual display.
+# Usage: [FEDORA=45] dev/run-tests.sh [command...]   (default: pytest)
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
-image=signall-dev
-docker image inspect "$image" >/dev/null 2>&1 || docker build -t "$image" -f "$repo/dev/Containerfile" "$repo/dev"
+fedora=${FEDORA:-40}
+image=signall-dev$([ "$fedora" = 40 ] || echo "-f$fedora")
+docker image inspect "$image" >/dev/null 2>&1 ||
+    docker build -t "$image" --build-arg FEDORA="$fedora" -f "$repo/dev/Containerfile" "$repo/dev"
 extra=()
 # Hosts in FIPS mode leak that into containers; test like a regular desktop.
 [ "$(cat /proc/sys/crypto/fips_enabled 2>/dev/null || echo 0)" = 1 ] && extra+=(-v /dev/null:/proc/sys/crypto/fips_enabled:ro)

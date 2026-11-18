@@ -30,6 +30,8 @@ BuildRequires:  libappstream-glib
 
 Requires:       python3
 Requires:       python3-gobject
+# The cairo typelib that WebKit needs; Fedora 45 stopped pulling it in with python3-gobject.
+Requires:       gobject-introspection
 Requires:       gtk4
 Requires:       libadwaita
 Requires:       webkitgtk6.0
