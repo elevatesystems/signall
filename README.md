@@ -99,8 +99,12 @@ Common causes:
 
 ## Development
 
+Report security problems privately; see [SECURITY.md](SECURITY.md).
+
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command). `scripts/update-dod-certs.py` refreshes the bundled DoD certificates from DISA.
 
 ## License
 
 MIT; see [LICENSE](LICENSE). pdf.js (downloaded at build time) is Apache-2.0.
+
+Signall is an independent project. It is not affiliated with or endorsed by the Department of Defense, DISA, or Adobe.
