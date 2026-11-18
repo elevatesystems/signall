@@ -16,39 +16,17 @@ Signatures carry the DoD certificate chain and revocation (OCSP) data, as Acroba
 
 ## Install
 
-Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader.
+Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. If `git` is missing, install it first with `sudo dnf install git`.
 
-1. Install the system packages, and start the smart card service:
+```sh
+git clone https://github.com/elevatesystems/signall.git
+cd signall && ./install.sh
+```
 
-   ```sh
-   sudo dnf install git python3-gobject gtk4 libadwaita webkitgtk6.0 opensc pcsc-lite pcsc-lite-ccid
-   sudo systemctl enable --now pcscd.socket
-   ```
+The script installs any missing system packages and starts the smart card service; for those two steps it asks for your password. Everything else goes in your home folder (`~/.local`), and you can delete the `signall` folder afterward. Then open **Signall** from the app search.
 
-2. Get the code and set it up in a virtual environment:
-
-   ```sh
-   git clone https://github.com/elevatesystems/signall.git && cd signall
-   python3 scripts/fetch-pdfjs.py          # downloads the pinned pdf.js release
-   /usr/bin/python3 -m venv --system-site-packages .venv
-   .venv/bin/pip install -e .
-   ```
-
-   Use the system Python (`/usr/bin/python3`): it is the one that can see Fedora's GTK libraries. A Python from asdf, pyenv, or similar tools cannot.
-
-3. Add Signall to the GNOME app search and to "Open With" for PDFs:
-
-   ```sh
-   mkdir -p ~/.local/share/applications
-   sed "s|^Exec=signall-app|Exec=$PWD/.venv/bin/signall-app|" data/io.github.elevatesystems.Signall.desktop \
-       > ~/.local/share/applications/io.github.elevatesystems.Signall.desktop
-   cp -r data/icons ~/.local/share/
-   ```
-
-   The shortcut runs Signall from this folder, so don't move or delete it.
-
-**Update:** `git pull`, then `.venv/bin/pip install -e .` again.
-**Uninstall:** delete `~/.local/share/applications/io.github.elevatesystems.Signall.desktop`, the `signall` icons under `~/.local/share/icons/hicolor`, and the `signall` folder.
+- **Update:** `git pull && ./install.sh` (clone again if you deleted the folder).
+- **Uninstall:** `./install.sh --uninstall` (from a fresh clone, if you deleted the folder).
 
 ## Use the app
 
@@ -65,7 +43,7 @@ Your PIN goes only to the card. Signall never stores or logs it.
 
 ## Use the command line
 
-The command line does the same things. Activate the virtual environment first (`. .venv/bin/activate`, or `source .venv/bin/activate.fish` in fish).
+The `signall` command does the same things.
 
 ```sh
 signall doctor                          # check the reader, card, certificates, and network
@@ -100,6 +78,17 @@ Common causes:
 ## Development
 
 Report security problems privately; see [SECURITY.md](SECURITY.md).
+
+To work on Signall, run it from the checkout instead of installing it:
+
+```sh
+python3 scripts/fetch-pdfjs.py
+/usr/bin/python3 -m venv --system-site-packages .venv
+.venv/bin/pip install -e ".[test]"
+.venv/bin/signall-app
+```
+
+Use the system Python (`/usr/bin/python3`): it is the one that can see Fedora's GTK libraries. A Python from asdf, pyenv, or similar tools cannot.
 
 `dev/run-tests.sh` runs the test suite in a Fedora 40 container with a virtual display and a SoftHSM2 token that behaves like a CAC. It needs Docker or Podman (with the `docker` command). `scripts/update-dod-certs.py` refreshes the bundled DoD certificates from DISA.
 
