@@ -91,7 +91,7 @@ Known gaps:
 
 - **App icon:** the freedesktop icon name is `signall`, installed from `data/icons/hicolor/`. The 16–32 px PNGs come from a simplified drawing; 48 px and up use `scalable/apps/signall.svg`. Keep that split if you regenerate the icons. Headerbars and panels use `signall-symbolic`.
 - **Colors:** ink navy `#1B2A4A` (text, outlines), sky `#8EC5EA` (icon tile), cream `#FBF3E4`, chip gold `#F2B33D`, and coral `#F26B5B`, the single accent color. Use navy text on cream and cream text on navy.
-- **Wordmark:** Fraunces Bold, already converted to outlines in `assets/signall-lockup*.svg`. UI text follows the platform font.
+- **Wordmark:** Fraunces Bold, already converted to outlines in `assets/signall-banner.svg`. UI text follows the platform font.
 
 ## Roadmap
 

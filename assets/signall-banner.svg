@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 676 200" role="img" aria-label="Signall">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-36 -28 748 256" width="374" height="128" role="img" aria-label="Signall">
+<rect x="-36" y="-28" width="748" height="256" rx="36" fill="#FBF6EC"/>
 <title>Signall</title>
 <g><defs><clipPath id="lk"><rect width="200" height="200" rx="46"/></clipPath></defs>
 <g clip-path="url(#lk)">

@@ -1,13 +1,8 @@
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/signall-lockup-light.svg">
-    <img src="assets/signall-lockup.svg" height="72" alt="Signall">
-  </picture>
-</h1>
+![Signall](assets/signall-banner.svg)
 
 Signall is a GNOME app for signing PDFs with a US DoD Common Access Card (CAC) on Linux. Open a PDF, fill it in, click a signature field or draw a box, and enter your PIN. The signatures validate in Adobe Acrobat. A `signall` command-line tool is included for scripting.
 
-<p align="center"><img src="assets/screenshot.png" width="800" alt="Signall showing an equipment hand receipt: the sidebar lists a valid signature by the issuer and an unsigned field for the receiver, which is highlighted on the page with a Sign here label"></p>
+![Signall showing an equipment hand receipt: the sidebar lists a valid signature by the issuer, and the receiver's unsigned field is highlighted on the page with a "Sign here" label](assets/screenshot.png)
 
 It signs:
 
