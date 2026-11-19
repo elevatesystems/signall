@@ -76,7 +76,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/*.rpm --repo "$GITHUB_REPOSITORY" \
             --title "Signall ${GITHUB_REF_NAME#v}" --generate-notes $prerelease
 
-  # The COPR repository (elevate-systems/Signall), which delivers updates through dnf and
+  # The COPR repository (elevate-systems/signall), which delivers updates through dnf and
   # GNOME Software. COPR builds for each Fedora it has enabled, and adds new Fedora releases
   # itself when they branch.
   copr:
@@ -95,4 +95,4 @@ jobs:
         run: |
           mkdir -p ~/.config
           printf '%s\n' "$COPR_CONFIG" > ~/.config/copr
-          copr-cli build elevate-systems/Signall dist/*.src.rpm
+          copr-cli build elevate-systems/signall dist/*.src.rpm
