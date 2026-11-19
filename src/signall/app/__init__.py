@@ -32,9 +32,12 @@ def main(argv: list[str] | None = None) -> int:
         def do_startup(self) -> None:
             Adw.Application.do_startup(self)
             Gtk.Window.set_default_icon_name("signall")
+            theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+            # Fallbacks for interface icons the user's icon theme lacks (see icons/README.md).
+            theme.add_search_path(str(Path(__file__).resolve().parent / "icons"))
             source_icons = Path(__file__).resolve().parents[3] / "data" / "icons"
             if source_icons.is_dir():  # running from a checkout
-                Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(str(source_icons))
+                theme.add_search_path(str(source_icons))
             self.web_context = new_web_context()
             # Every card operation runs on this one thread, so polling never overlaps a signature.
             self.card_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="signall-card")
@@ -104,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
                 issue_url="https://github.com/elevatesystems/signall/issues",
             )
             about.add_legal_section("pdf.js", "© Mozilla Foundation", Gtk.License.APACHE_2_0, None)
+            about.add_legal_section("Adwaita icons", "© The GNOME Project", Gtk.License.CUSTOM,
+                                    "Interface icons from the Adwaita icon theme, licensed under "
+                                    "Creative Commons Attribution-Share Alike 3.0 United States.")
             about.present(self.get_active_window())
 
     app = SignallApp()

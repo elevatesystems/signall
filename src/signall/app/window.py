@@ -47,11 +47,12 @@ def main_thread_renderer(pdf, fields):
 
 
 _STATUS = {
-    "valid": ("emblem-ok-symbolic", "success", "Valid signature"),
+    "valid": ("object-select-symbolic", "success", "Valid signature"),
     "untrusted": ("dialog-warning-symbolic", "warning", "Signer's certificate is not trusted"),
     "modified": ("dialog-warning-symbolic", "warning", "Document was changed after signing"),
     "invalid": ("dialog-error-symbolic", "error", "Signature is not valid"),
-    None: ("emblem-ok-symbolic", "dim-label", "Checking…"),
+    "error": ("dialog-warning-symbolic", "warning", "Couldn't check this signature"),
+    None: ("object-select-symbolic", "dim-label", "Checking…"),
 }
 
 
@@ -270,14 +271,14 @@ class SignallWindow(Adw.ApplicationWindow):
             from signall.verify import verify
 
             try:
-                reports = verify(doc.data)
-            except Exception:
-                reports = []
-            GLib.idle_add(done, reports)
+                reports, error = verify(doc.data), None
+            except Exception as exc:
+                reports, error = [], f"{type(exc).__name__}: {exc}"
+            GLib.idle_add(done, reports, error)
 
-        def done(reports) -> bool:
+        def done(reports, error) -> bool:
             if self.doc is doc:
-                doc.apply_reports(reports)
+                doc.apply_reports(reports, error)
                 self._fill_sidebar()
             return False
 
@@ -318,6 +319,11 @@ class SignallWindow(Adw.ApplicationWindow):
             subtitle = f"{row.signer or 'Unknown signer'}" + (f" · {row.date}" if row.date else "") + f"\n{status}"
             widget = Adw.ActionRow(title=row.label, subtitle=subtitle, use_markup=False)
             widget.add_prefix(Gtk.Image(icon_name=icon, css_classes=[style]))
+            if row.status is not None:  # checked: offer the details
+                widget.set_activatable(True)
+                widget.set_tooltip_text("Show signature details")
+                widget.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+                widget.connect("activated", lambda _w, r=row: dialogs.SignatureDetailsDialog(r, _STATUS[r.status]).present(self))
             return widget
         widget = Adw.ActionRow(title=row.label, subtitle="Not signed", use_markup=False)
         widget.add_prefix(Gtk.Image(icon_name="document-edit-symbolic", css_classes=["dim-label"]))

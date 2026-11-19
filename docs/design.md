@@ -90,6 +90,7 @@ Known gaps:
 ## Brand
 
 - **App icon:** the freedesktop icon name is `signall`, installed from `data/icons/hicolor/`. The 16–32 px PNGs come from a simplified drawing; 48 px and up use `scalable/apps/signall.svg`. Keep that split if you regenerate the icons. Headerbars and panels use `signall-symbolic`.
+- **Interface icons:** `src/signall/app/icons/` holds fallback copies of every symbolic icon the app uses, from Adwaita. GTK prefers the user's icon theme and falls back to these, so icons still show with themes that lack them (Breeze, a theme that isn't installed) and with Adwaita versions that dropped them (Adwaita 50 has no `emblem-ok-symbolic`). A test fails if an icon name in the app has no fallback.
 - **Colors:** ink navy `#1B2A4A` (text, outlines), sky `#8EC5EA` (icon tile), cream `#FBF3E4`, chip gold `#F2B33D`, and coral `#F26B5B`, the single accent color. Use navy text on cream and cream text on navy.
 - **Wordmark:** Fraunces Bold, already converted to outlines in `assets/signall-banner.svg`. UI text follows the platform font.
 

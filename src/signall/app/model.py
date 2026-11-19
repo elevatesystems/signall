@@ -55,7 +55,9 @@ class FieldRow:
     path: list[str] | None = None   # XFA template names, for locating the field in the layout
     page: int | None = None
     rect: tuple[float, float, float, float] | None = None
-    status: str | None = None       # "valid", "untrusted", "modified", "invalid", or None (not checked yet)
+    status: str | None = None       # "valid", "untrusted", "modified", "invalid", "error", or None (not checked yet)
+    report: SignatureReport | None = None
+    error: str | None = None        # why the signature couldn't be checked (status "error")
 
 
 # Words that stay in capitals when a form's all-caps caption is turned into a label.
@@ -148,11 +150,19 @@ class Document:
             ))
         return rows
 
-    def apply_reports(self, reports: list[SignatureReport]) -> None:
+    def apply_reports(self, reports: list[SignatureReport], error: str | None = None) -> None:
+        """Set each signed row's status from the verification reports.
+
+        ``error`` says why verification failed altogether; signed rows without a report get it.
+        """
         by_field = {r.field: r for r in reports}
         for row in self.rows:
             r = by_field.get(row.name)
+            row.report = r
             if r is None:
+                if row.signed:
+                    row.status = "error"
+                    row.error = error or "Signall found no signature data for this field."
                 continue
             if not r.intact:
                 row.status = "invalid"

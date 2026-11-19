@@ -81,7 +81,7 @@ def confirm_discard(parent: Gtk.Widget, name: str, on_result: Callable[[str], No
 
 
 _STATUS_STYLE = {
-    "ok": ("emblem-ok-symbolic", "success"),
+    "ok": ("object-select-symbolic", "success"),
     "warn": ("dialog-warning-symbolic", "warning"),
     "FAIL": ("dialog-error-symbolic", "error"),
     "skip": ("action-unavailable-symbolic", "dim-label"),
@@ -165,3 +165,108 @@ class TroubleshootDialog(Adw.Dialog):
     def _copy_report(self, _button) -> None:
         Gdk.Display.get_default().get_clipboard().set(self._report)
         self._copy.set_tooltip_text("Copied")
+
+
+_CHANGES_AFTER = {
+    "none": "None",
+    "form filling": "Form filled in",
+    "annotations": "Comments added",
+    "other": "Other changes",
+}
+
+
+class SignatureDetailsDialog(Adw.Dialog):
+    """What Signall found out about one signature: why it is (not) trusted, and its certificates."""
+
+    def __init__(self, row, status: tuple[str, str, str]) -> None:
+        super().__init__(title="Signature Details", content_width=560, content_height=680)
+        from signall.verify import SOURCES, describe
+
+        report = row.report
+        icon, style, heading = status
+        self._report = describe(report) if report else f"Field: {row.name}\nCouldn't check: {row.error}"
+
+        header = Adw.HeaderBar()
+        self._copy = Gtk.Button(icon_name="edit-copy-symbolic",
+                                tooltip_text="Copy Details (without the signer's name or DoD ID number)")
+        self._copy.connect("clicked", self._copy_details)
+        header.pack_start(self._copy)
+
+        page = Adw.PreferencesPage()
+        summary = Adw.PreferencesGroup()
+        top = Gtk.Box(spacing=12)
+        top.append(Gtk.Image(icon_name=icon, css_classes=[style], pixel_size=32, valign=Gtk.Align.START))
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        text.append(Gtk.Label(label=heading, xalign=0, wrap=True, css_classes=["title-4"]))
+        problem = report.problem if report else row.error
+        if problem:
+            text.append(Gtk.Label(label=problem, xalign=0, wrap=True, selectable=True))
+        top.append(text)
+        summary.add(top)
+        page.add(summary)
+
+        def prop(group, title: str, value: str) -> None:
+            r = Adw.ActionRow(title=title, subtitle=value or "—", use_markup=False, subtitle_selectable=True,
+                              css_classes=["property"])
+            group.add_row(r) if isinstance(group, Adw.ExpanderRow) else group.add(r)
+
+        signature = Adw.PreferencesGroup(title="Signature")
+        prop(signature, "Field", row.label if row.label == row.name else f"{row.label} ({row.name})")
+        if report is not None:
+            prop(signature, "Signed by", report.signer)
+            prop(signature, "Certificate issued by", report.issuer)
+            prop(signature, "Signing time", report.signing_time or "Not recorded")
+            prop(signature, "Signed content", "Intact" if report.intact else "Altered or damaged")
+            prop(signature, "Changes after signing", _CHANGES_AFTER.get(report.changes_after, report.changes_after))
+            prop(signature, "Revocation data", report.revocation[:1].upper() + report.revocation[1:])
+        page.add(signature)
+
+        if report is not None and report.certificates:
+            certs = Adw.PreferencesGroup(title="Certificate Chain", description="From the signer up to the root CA")
+            for cert in report.certificates:
+                if cert.missing:
+                    r = Adw.ActionRow(title=cert.name, use_markup=False, subtitle_selectable=True,
+                                      subtitle="Not found: not among Signall's DoD certificates or this computer's "
+                                               "trusted certificates, and not included in the signature"
+                                               + (f"\nAvailable from {cert.download_url}" if cert.download_url else ""))
+                    r.add_prefix(Gtk.Image(icon_name="dialog-warning-symbolic", css_classes=["warning"]))
+                    certs.add(r)
+                    continue
+                source = SOURCES.get(cert.source, cert.source)
+                expander = Adw.ExpanderRow(title=cert.name, use_markup=False,
+                                           subtitle=source + (" · trusted root" if cert.trust_anchor else ""))
+                prop(expander, "Issued by", cert.issuer)
+                prop(expander, "Valid", f"{cert.valid_from} to {cert.valid_until}")
+                if cert.key_usage:
+                    prop(expander, "Key usage", cert.key_usage)
+                prop(expander, "Serial number", cert.serial)
+                prop(expander, "SHA-256 fingerprint", cert.sha256)
+                certs.add(expander)
+            page.add(certs)
+
+        if report is not None and (report.indication or report.messages):
+            tech = Adw.PreferencesGroup(title="Technical Details")
+            if report.indication:
+                prop(tech, "Validation result", report.indication)
+            for message in report.messages:
+                prop(tech, "pyHanko", message)
+            page.add(tech)
+
+        copy_group = Adw.PreferencesGroup(
+            description="Paste the details into a bug report or a message to your help desk. They leave out "
+                        "the signer's name and DoD ID number.")
+        copy_button = Gtk.Button(label="_Copy Details", use_underline=True, halign=Gtk.Align.CENTER,
+                                 css_classes=["pill"], margin_top=6)
+        copy_button.connect("clicked", self._copy_details)
+        copy_group.add(copy_button)
+        page.add(copy_group)
+
+        view = Adw.ToolbarView()
+        view.add_top_bar(header)
+        view.set_content(page)
+        self.toasts = Adw.ToastOverlay(child=view)
+        self.set_child(self.toasts)
+
+    def _copy_details(self, _button) -> None:
+        Gdk.Display.get_default().get_clipboard().set(self._report)
+        self.toasts.add_toast(Adw.Toast(title="Details copied", timeout=2))

@@ -18,7 +18,7 @@ Name:           signall
 Version:        %{signall_version}
 Release:        1%{?dist}
 Summary:        Sign PDFs and PDF forms with a US DoD CAC
-License:        MIT AND Apache-2.0 AND BSD-3-Clause AND PSF-2.0
+License:        MIT AND Apache-2.0 AND BSD-3-Clause AND PSF-2.0 AND CC-BY-SA-3.0
 URL:            https://github.com/elevatesystems/signall
 Source0:        signall-%{version}.tar.gz
 

@@ -127,7 +127,7 @@ def cmd_sign(args) -> int:
 
 
 def cmd_verify(args) -> int:
-    from signall.verify import load_certificates, verify
+    from signall.verify import describe, load_certificates, verify
 
     roots = [c for path in (args.trust or []) for c in load_certificates(path)]
     reports = verify(_read(args.file), roots, online=args.online)
@@ -143,6 +143,10 @@ def cmd_verify(args) -> int:
         print(f"  unchanged since signing: {'yes' if r.intact else 'NO'}; "
               f"certificate trusted: {'yes' if r.trusted else 'no'}; later changes: {r.changes_after}")
         print(f"  revocation data: {r.revocation}")
+        if args.details:
+            print("  " + describe(r, private=False).replace("\n", "\n  "))
+        elif r.problem:
+            print(f"  why: {r.problem}")
     return worst
 
 
@@ -217,6 +221,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("file")
     p.add_argument("--trust", action="append", metavar="CERT", help="extra trusted root certificate(s) (PEM or DER)")
     p.add_argument("--online", action="store_true", help="check revocation online (OCSP/CRL)")
+    p.add_argument("--details", action="store_true",
+                   help="also show each signature's certificate chain and validation messages")
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser("tokens", help="list smart cards and their certificates")

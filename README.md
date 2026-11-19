@@ -44,7 +44,7 @@ Open **Signall** from the app search, or right-click a PDF and choose **Open Wit
 - **Sign anywhere:** click **Add Signature**, then drag a box on the page. Dynamic XFA forms such as the DD 2875 only accept signatures in their own fields.
 - **Enter your PIN** when asked. Signall then offers to save a signed copy named "*name* - signed.pdf"; the original is left unchanged.
 
-The sidebar shows each signature field and whether existing signatures are valid. If the card isn't found, use **Check Smart Card** in the menu (see [Troubleshooting](#troubleshooting)).
+The sidebar shows each signature field and whether existing signatures are valid. Click a signature for details: why it isn't trusted, if it isn't, and its certificate chain. **Copy Details** copies them for a bug report, without the signer's name or DoD ID number. If the card isn't found, use **Check Smart Card** in the menu (see [Troubleshooting](#troubleshooting)).
 
 Your PIN goes only to the card. Signall never stores or logs it.
 
@@ -67,7 +67,7 @@ signall verify "form - signed.pdf"
 - `--set` takes an XFA data path for XFA forms, or a field name for other PDF forms. Repeat it for each value.
 - `--offline` signs without contacting the DoD revocation servers. The signature then lacks revocation data.
 - `-o FILE` chooses the output file. By default it's "*name* - signed.pdf", and `--force` replaces an existing one.
-- `verify` exits with 0 if every signature is valid, 1 if a signature is intact but not trusted, and 2 if one is invalid.
+- `verify` exits with 0 if every signature is valid, 1 if a signature is intact but not trusted, and 2 if one is invalid. It says why a signature isn't valid; `--details` adds each signature's certificate chain and validation messages.
 
 Run `signall COMMAND --help` for all options.
 
@@ -81,6 +81,8 @@ Common causes:
 - **A virtual machine has the reader:** virt-manager, GNOME Boxes, or VirtualBox may have the USB reader passed through to a VM. Give it back to the host, or shut the VM down.
 - **GnuPG holds the reader:** `gpgconf --kill scdaemon`.
 - **Wrong PIN:** the card locks after a few wrong tries, and only a CAC office (RAPIDS) can unlock it.
+
+If a signature shows as not trusted, click it in the sidebar to see why. A common cause is a certificate from a CA that Signall's bundled DoD certificates don't include and that the signer's software didn't put into the signature. Use **Copy Details** to send the details with a bug report.
 
 ## Development
 
