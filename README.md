@@ -82,7 +82,7 @@ Common causes:
 - **GnuPG holds the reader:** `gpgconf --kill scdaemon`.
 - **Wrong PIN:** the card locks after a few wrong tries, and only a CAC office (RAPIDS) can unlock it.
 
-If a signature shows as not trusted, click it in the sidebar to see why. A common cause is a certificate from a CA that Signall's bundled DoD certificates don't include and that the signer's software didn't put into the signature. Use **Copy Details** to send the details with a bug report.
+If a signature shows as not trusted, click it in the sidebar to see why. Common causes are a signature made with a self-signed digital ID (Acrobat's "Create a new Digital ID") instead of a CAC, which the signer has to redo with their CAC, and a certificate from a CA that Signall's bundled DoD certificates don't include and that the signer's software didn't put into the signature. Use **Copy Details** to send the details with a bug report.
 
 ## Development
 

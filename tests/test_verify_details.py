@@ -87,3 +87,42 @@ def test_every_interface_icon_has_a_fallback():
         names |= set(re.findall(r'"([a-z-]+-symbolic)"', source.read_text()))
     bundled = {p.stem for p in (APP / "icons").glob("*.svg")}
     assert names and names <= bundled, f"add these to src/signall/app/icons: {sorted(names - bundled)}"
+
+
+def _self_signed_id():
+    """Like Acrobat's "Create a new Digital ID": self-signed, digital signature only, email in the name."""
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+    from pyhanko.keys import load_cert_from_pemder, load_private_key_from_pemder_data
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Jane Example"),
+                      x509.NameAttribute(NameOID.EMAIL_ADDRESS, "jane.example@mail.test"),
+                      x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
+            .not_valid_after(now + datetime.timedelta(days=5 * 365))
+            .add_extension(x509.KeyUsage(True, False, False, False, False, False, False, False, False), critical=True)
+            .sign(key, hashes.SHA256()))
+    der = cert.public_bytes(serialization.Encoding.DER)
+    signing_key = load_private_key_from_pemder_data(
+        key.private_bytes(serialization.Encoding.DER, serialization.PrivateFormat.PKCS8,
+                          serialization.NoEncryption()), passphrase=None)
+    from asn1crypto import x509 as asn1_x509
+
+    return signers.SimpleSigner(signing_cert=asn1_x509.Certificate.load(der), signing_key=signing_key,
+                                cert_registry=SimpleCertificateStore())
+
+
+def test_self_signed_digital_id_is_explained_and_kept_private(plain_pdf):
+    (report,) = verify(sign(plain_pdf, _self_signed_id(), BOX))
+    assert report.intact and not report.trusted
+    assert "self-signed certificate" in report.problem and "CAC" in report.problem
+    text = describe(report)
+    assert "Jane Example" not in text and "jane.example" not in text and "mail.test" not in text
+    assert "Result: not trusted" in text

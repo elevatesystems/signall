@@ -67,6 +67,8 @@ class SignatureReport:
     """pyHanko's own messages about the problem, for bug reports."""
     certificates: list[CertificateInfo] = field(default_factory=list)
     """The signer's certificate first, then its issuers toward the root."""
+    personal: list[str] = field(default_factory=list)
+    """The signer's name, email address, and other personal details, for describe() to leave out."""
 
     @property
     def ok(self) -> bool:
@@ -205,6 +207,7 @@ def verify(data: bytes, extra_roots: list[x509.Certificate] = (), online: bool =
             changes_after=_CHANGES.get(status.modification_level.name, "other") if status.modification_level else "none",
             indication=status.trust_problem_indic.name if status.trust_problem_indic else None,
             messages=list(dict.fromkeys(messages)),
+            personal=_personal(cert),
         )
         with _pyhanko_messages():
             report.revocation = _revocation_state(emb, extra_roots)
@@ -247,6 +250,18 @@ def _pyhanko_messages():
         logger.removeHandler(handler)
         logger.setLevel(saved[0])
         logger.propagate = saved[1]
+
+
+_PERSONAL_ATTRIBUTES = ("common_name", "email_address", "given_name", "surname", "name", "initials",
+                       "pseudonym", "serial_number", "user_id")
+
+
+def _personal(cert: x509.Certificate) -> list[str]:
+    values = []
+    for key in _PERSONAL_ATTRIBUTES:
+        value = cert.subject.native.get(key)
+        values += value if isinstance(value, list) else [value]
+    return sorted({str(v) for v in values if v}, key=len, reverse=True)  # longest first, for replacing
 
 
 def _name(name: x509.Name) -> str:
@@ -348,6 +363,10 @@ def _trust_problem(report: SignatureReport, cert: x509.Certificate, status) -> s
 
     indication = report.indication or ""
     last = report.certificates[-1] if report.certificates else None
+    if cert.self_signed != "no":
+        return ("The signature was made with a self-signed certificate: a digital ID that the signer's software "
+                "created (such as Acrobat's “Create a new Digital ID”), not one from a CAC. Nobody vouches for "
+                "who made it, so it can't be trusted. The signer needs to sign again with their CAC.")
     if indication == "NO_CERTIFICATE_CHAIN_FOUND" or (last is not None and last.missing):
         if last is not None and last.missing:
             return (f"The certificate was issued by “{last.name}”, which Signall doesn't have. It isn't among "
@@ -386,15 +405,19 @@ def describe(report: SignatureReport, *, private: bool = True) -> str:
     def hide(text: str) -> str:
         if not private:
             return text
-        text = text.replace(report.signer, "[signer]") if report.signer else text
+        for value in [report.signer, *report.personal]:
+            if value:
+                text = text.replace(value, "[signer]")
+        text = re.sub(r"[\w.+-]+@[\w-]+(\.[\w-]+)+", "[email]", text)
         return re.sub(r"(?<!\d)\d{10}(?!\d)", "[EDIPI]", text)
 
     try:
         pyhanko = version("pyHanko")
     except PackageNotFoundError:
         pyhanko = "unknown"
-    state = "valid" if report.ok else ("not trusted" if report.intact and report.changes_after != "other"
-                                       else "NOT VALID")
+    # The same order as the app's sidebar (see app.model.Document.apply_reports).
+    state = ("NOT VALID" if not report.intact else "not trusted" if not report.trusted
+             else "changed after signing" if report.changes_after == "other" else "valid")
     lines = [
         f"Signall {__version__}, DoD certificates {bundle_version()}, pyHanko {pyhanko}",
         f"Field: {report.field}",

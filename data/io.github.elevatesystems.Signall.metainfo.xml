@@ -42,6 +42,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.1" date="2026-11-19">
+      <description>
+        <p>Signature details explain signatures made with a self-signed digital ID instead of a CAC, and copied details no longer include the signer's email address.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-19">
       <description>
         <p>Click a signature to see why it isn't trusted, with its certificate chain, and copy the details for a bug report.</p>
