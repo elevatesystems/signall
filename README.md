@@ -19,13 +19,13 @@ Signatures carry the DoD certificate chain and revocation (OCSP) data, as Acroba
 Signall needs Fedora 40 or newer (GNOME 46 or newer) and a CAC reader. Install it with:
 
 ```sh
-sudo dnf copr enable elevate-systems/Signall
+sudo dnf copr enable elevate-systems/signall
 sudo dnf install signall
 ```
 
 Then open **Signall** from the app search. Updates arrive with your regular system updates, in GNOME Software or `dnf upgrade`. To uninstall, run `sudo dnf remove signall`. Each release, with its changes, is listed on the [releases page](https://github.com/elevatesystems/signall/releases).
 
-The repository (on Fedora's [COPR](https://copr.fedorainfracloud.org/coprs/elevate-systems/Signall/) service) covers the Fedora releases that are still supported, on x86_64 and ARM. On Fedora 40 to 42, install the release RPM instead; it doesn't update itself, so run the same command again for a new version:
+The repository (on Fedora's [COPR](https://copr.fedorainfracloud.org/coprs/elevate-systems/signall/) service) covers the Fedora releases that are still supported, on x86_64 and ARM. On Fedora 40 to 42, install the release RPM instead; it doesn't update itself, so run the same command again for a new version:
 
 ```sh
 sudo dnf install https://github.com/elevatesystems/signall/releases/latest/download/signall-latest.fc$(rpm -E %fedora).x86_64.rpm
