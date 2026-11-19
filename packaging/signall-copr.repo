@@ -1,0 +1,5 @@
+# Check Signall's COPR repository for updates as often as Fedora's own updates repository (6
+# hours) rather than dnf's default of 48 hours, so dnf and GNOME Software notice new releases
+# within a day. Only applies when the repository is enabled; see repos.override.d in dnf5-conf(5).
+[copr:copr.fedorainfracloud.org:elevate-systems:signall]
+metadata_expire=6h

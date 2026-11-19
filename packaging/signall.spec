@@ -70,6 +70,10 @@ desktop-file-install --dir=%{buildroot}%{_datadir}/applications data/%{app_id}.d
 install -Dm644 data/%{app_id}.metainfo.xml %{buildroot}%{_metainfodir}/%{app_id}.metainfo.xml
 mkdir -p %{buildroot}%{_datadir}/icons
 cp -r data/icons/hicolor %{buildroot}%{_datadir}/icons/
+%if 0%{?fedora} >= 41
+# dnf5 (Fedora 41 and newer) reads distribution repo overrides from here.
+install -Dm644 packaging/signall-copr.repo %{buildroot}%{_datadir}/dnf5/repos.override.d/80-signall-copr.repo
+%endif
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
@@ -85,6 +89,9 @@ PYTHONPATH=%{buildroot}%{_libdir}/signall %{python3} -s -c "import signall.cli, 
 %{_datadir}/applications/%{app_id}.desktop
 %{_metainfodir}/%{app_id}.metainfo.xml
 %{_datadir}/icons/hicolor/*/apps/signall*
+%if 0%{?fedora} >= 41
+%{_datadir}/dnf5/repos.override.d/80-signall-copr.repo
+%endif
 
 %changelog
 * Tue Nov 17 2026 The Signall contributors - %{version}-1
